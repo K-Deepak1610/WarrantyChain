@@ -66,33 +66,41 @@ All transactions are recorded immutably on blockchain.
 
 ---
 
-## 🖥️ Local Setup
+## 🚀 Local Setup
 
 ### 1️⃣ Clone Repository
+
+```bash
 git clone https://github.com/K-Deepak1610/WarrantyChain.git
 cd WarrantyChain
-
----
-
+```
 ### 2️⃣ Install Dependencies
+
+```bash
 npm install
+```
 
 If frontend is separate:
+
+```bash
 cd frontend
 npm install
+```
+### 3️⃣ Start Hardhat Node
 
----
-
+```bash
+npx hardhat node
+```
 ### 4️⃣ Deploy Smart Contract
+
+```bash
 npx hardhat run scripts/deploy.js --network localhost
-
----
-
+```
 ### 5️⃣ Start Frontend
+
+```bash
 npm run dev
-
----
-
+```
 ## 📱 QR Verification
 
 Each product generates a QR code containing a verification link.
@@ -109,10 +117,7 @@ Scanning the QR:
 
 Watch the full project demonstration here:
 
-👉 [Project Demo Video](PASTE_YOUR_VIDEO_LINK_HERE)
-
-(You can upload your video to YouTube as unlisted and paste the link above.)
-
+👉 [Project Demo Video](https://youtu.be/1oRe3pQXAGk)
 ---
 
 ## 🔐 Smart Contract Highlights
@@ -132,14 +137,7 @@ Watch the full project demonstration here:
 - Add NFT-based ownership model
 - Add multi-product dashboard analytics
 - Mobile responsive PWA version
-
----
-
-## 👨‍💻 Author
-
-Deepak  
-GitHub: https://github.com/K-Deepak1610
-
+- Developing a mobile app
 ---
 
 ## 📜 License
