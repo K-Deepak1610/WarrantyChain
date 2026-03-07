@@ -190,7 +190,7 @@ const VerifyOwnership = () => {
 
                         <div className="pt-8 flex flex-col items-center gap-4 border-t border-white/5 mt-8">
                             <QRCodeDisplay
-                                value={window.location.origin + "/verify/" + productId}
+                                value={`${window.location.origin}/verify/${productId}`}
                                 title="Verification QR"
                             />
 

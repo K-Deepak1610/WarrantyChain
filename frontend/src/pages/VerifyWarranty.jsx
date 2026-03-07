@@ -247,7 +247,7 @@ const VerifyWarranty = () => {
 
                         <div className="pt-4 flex flex-col items-center gap-4">
                             <QRCodeDisplay
-                                value={window.location.origin + "/verify/" + productId}
+                                value={`${window.location.origin}/verify/${productId}`}
                                 title="Verification QR"
                             />
 

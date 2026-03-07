@@ -96,8 +96,8 @@ export const generateCertificate = async (productData) => {
 
     // QR Code
     try {
-        const verificationUrl = window.location.origin + "/verify/" + productId;
-        const qrBase64 = await QRCode.toDataURL(verificationUrl);
+        const verificationLink = `${window.location.origin}/verify/${productId}`;
+        const qrBase64 = await QRCode.toDataURL(verificationLink);
         const qrSize = 40;
         doc.addImage(qrBase64, "PNG", pageWidth - margin - qrSize, yPos - 100, qrSize, qrSize);
     } catch (err) {
