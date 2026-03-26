@@ -91,3 +91,49 @@ export const transferOwnership = async (contract, productId, newOwner, newOwnerN
         throw error;
     }
 };
+
+export const getFallbackProduct = (targetId) => {
+    try {
+        const backup = localStorage.getItem(`product_${targetId}`);
+        if (!backup) return null;
+        
+        const parsed = JSON.parse(backup);
+        const daysRemaining = Math.max(0, Math.ceil((parsed.warrantyEnd - Date.now() / 1000) / (60 * 60 * 24)));
+        
+        // Handle strictly mapping wallet hashes iteratively through history arrays
+        const rawHistory = parsed.history || [];
+        const history = rawHistory.map((rec, i, arr) => {
+            const isLast = (i === arr.length - 1);
+            let address = rec.ownerAddress;
+            if (!address && isLast) {
+                address = parsed.ownerAddress || parsed.owner || parsed.currentOwner || null;
+            }
+            return {
+                ...rec,
+                ownerAddress: address || null
+            };
+        });
+
+        // Current owner address derived directly from the sanitized history list
+        const rootOwnerAddress = history.length > 0
+            ? history[history.length - 1].ownerAddress
+            : (parsed.ownerAddress || parsed.owner || parsed.currentOwner || null);
+
+        return {
+            productId: parsed.id,
+            productName: parsed.name,
+            warrantyStart: parsed.warrantyStart,
+            warrantyEnd: parsed.warrantyEnd,
+            ownerName: parsed.ownerName,
+            ownerContact: parsed.ownerContact,
+            ownerAddress: rootOwnerAddress,
+            isValid: daysRemaining > 0,
+            daysRemaining,
+            isFallback: true,
+            history: history
+        };
+    } catch (e) {
+        console.error("Failed to parse fallback data", e);
+        return null;
+    }
+};

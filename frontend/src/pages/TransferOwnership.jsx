@@ -4,11 +4,15 @@ import { ethers } from 'ethers';
 import GlassCard from '../components/GlassCard';
 import AnimatedButton from '../components/AnimatedButton';
 import BackToDashboardButton from '../components/BackToDashboardButton';
+import ParticleBurst from '../components/ParticleBurst';
+import HashDisplay from '../components/HashDisplay';
 import { transferOwnership, verifyOwnership } from '../utils/blockchain';
 import { useWallet } from '../context/WalletContext';
 import { RefreshCw, ArrowRight, CheckCircle, AlertCircle, Wand2, Wallet, FileText } from 'lucide-react';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const TransferOwnership = () => {
+    usePageTitle('Transfer Ownership');
     const { contract } = useWallet();
     const [formData, setFormData] = useState({
         productId: "",
@@ -21,6 +25,7 @@ const TransferOwnership = () => {
     const [errorMsg, setErrorMsg] = useState("");
     const [transferredDetails, setTransferredDetails] = useState(null);
     const [txHash, setTxHash] = useState("");
+    const [showBurst, setShowBurst] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -66,16 +71,48 @@ const TransferOwnership = () => {
 
             // Wait a sec for propagation then fetch
             setTimeout(async () => {
-                const details = await verifyOwnership(contract, formData.productId);
-                setTransferredDetails(details);
-                setStatus("success");
+                try {
+                    const details = await verifyOwnership(contract, formData.productId);
+                    setTransferredDetails(details);
+                } catch (err) {
+                    console.warn("Could not verify ownership after transfer, updating local backup...");
+                    const backup = localStorage.getItem(`product_${formData.productId}`);
+                    if (backup) {
+                        const parsed = JSON.parse(backup);
+                        const updated = {
+                            ...parsed,
+                            ownerName: formData.newOwnerName,
+                            ownerContact: formData.newOwnerContact,
+                            history: [
+                                ...(parsed.history || []),
+                                {
+                                    ownerName: formData.newOwnerName,
+                                    ownerContact: formData.newOwnerContact,
+                                    ownerAddress: formData.newOwner,
+                                    transferDate: Math.floor(Date.now() / 1000)
+                                }
+                            ]
+                        };
+                        localStorage.setItem(`product_${formData.productId}`, JSON.stringify(updated));
+                    }
+                    setTransferredDetails({
+                        ownerName: formData.newOwnerName,
+                        ownerContact: formData.newOwnerContact,
+                        ownerAddress: formData.newOwner
+                    });
+                }
+                
+                setShowBurst(true);
+                setTimeout(() => {
+                    setStatus("success");
+                    setShowBurst(false);
+                }, 800);
             }, 2000);
 
         } catch (error) {
             console.error(error);
             setStatus("error");
             setErrorMsg(error.reason || error.message || "Transfer failed. Ensure you are the owner.");
-        } finally {
             setLoading(false);
         }
     };
@@ -116,11 +153,11 @@ const TransferOwnership = () => {
                                         <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Contact</p>
                                         <p className="text-white font-medium">{transferredDetails.ownerContact}</p>
                                     </div>
-                                    <div className="col-span-2">
-                                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">New Wallet Address</p>
-                                        <p className="font-mono text-orange-300 break-all bg-orange-900/10 px-2 py-1 rounded">
-                                            {transferredDetails.ownerAddress}
-                                        </p>
+                                    <div className="col-span-2 mt-4">
+                                        <HashDisplay 
+                                            label="New Wallet Address" 
+                                            value={transferredDetails.ownerAddress} 
+                                        />
                                     </div>
                                     <div className="col-span-2 mt-2 pt-2 border-t border-white/5">
                                         <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Transaction Hash</p>
@@ -146,66 +183,66 @@ const TransferOwnership = () => {
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-slate-400 mb-1">Product ID</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Target Product ID</label>
                             <input
                                 name="productId" required
                                 value={formData.productId}
-                                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-orange-500 transition-colors"
+                                className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
                                 onChange={handleChange}
-                                placeholder="Product ID to transfer"
+                                placeholder="Token ID"
                             />
                         </div>
 
-                        <div className="p-4 bg-orange-500/5 rounded-xl border border-orange-500/10 my-6">
-                            <h4 className="text-orange-400 font-semibold mb-4 flex items-center gap-2">
-                                <ArrowRight size={16} /> New Owner Details
+                        <div className="p-6 bg-slate-900/40 rounded-[2rem] border border-white/5 my-6 backdrop-blur-md shadow-inner shadow-black/20">
+                            <h4 className="text-cyan-400 font-bold mb-6 flex items-center gap-2 uppercase tracking-widest text-sm border-b border-white/5 pb-4">
+                                <ArrowRight size={16} /> New Node Designation
                             </h4>
 
-                            <div className="flex gap-2 mb-4">
+                            <div className="flex gap-2 mb-6">
                                 <button
                                     type="button"
                                     onClick={handleConnectNewOwner}
-                                    className="flex-1 py-3 px-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs rounded-lg border border-blue-500/20 transition-colors flex items-center justify-center gap-2 group"
+                                    className="flex-1 py-3 px-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs rounded-xl border border-cyan-500/20 transition-all flex items-center justify-center gap-2 group hover:shadow-[0_0_15px_rgba(34,211,238,0.2)]"
                                 >
                                     <Wallet size={16} className="group-hover:scale-110 transition-transform" />
-                                    <span>Select From Wallet</span>
+                                    <span className="font-bold tracking-wide">Use External Wallet</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleGenerateDemoWallet}
-                                    className="flex-1 py-3 px-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 text-xs rounded-lg border border-purple-500/20 transition-colors flex items-center justify-center gap-2 group"
+                                    className="flex-1 py-3 px-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs rounded-xl border border-indigo-500/20 transition-all flex items-center justify-center gap-2 group hover:shadow-[0_0_15px_rgba(129,140,248,0.2)]"
                                 >
                                     <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
-                                    <span>Generate Demo</span>
+                                    <span className="font-bold tracking-wide">Generate Demo Hash</span>
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-5">
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">New Owner Wallet Address</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Target Wallet Address</label>
                                     <input
                                         name="newOwner" required
                                         value={formData.newOwner}
                                         placeholder="0x..."
-                                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-orange-500 transition-colors font-mono"
+                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
                                         onChange={handleChange}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">New Owner Name</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Entity Name</label>
                                     <input
                                         name="newOwnerName" required
                                         value={formData.newOwnerName}
-                                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-orange-500 transition-colors"
+                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
                                         onChange={handleChange}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">New Owner Contact</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Transmission Vector (Contact)</label>
                                     <input
                                         name="newOwnerContact" required
                                         value={formData.newOwnerContact}
-                                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-orange-500 transition-colors"
+                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
                                         onChange={handleChange}
                                     />
                                 </div>
@@ -213,18 +250,21 @@ const TransferOwnership = () => {
                         </div>
 
                         {status === "error" && (
-                            <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 text-sm flex items-start gap-2">
-                                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                            <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-start gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                                <AlertCircle size={18} className="mt-0.5 shrink-0" />
                                 <span>{errorMsg}</span>
                             </div>
                         )}
 
-                        <AnimatedButton
-                            text={status === "processing" ? "Processing Transfer..." : "Confirm & Transfer Ownership"}
-                            disabled={loading}
-                            icon={RefreshCw}
-                            className={`w-full ${status === "processing" ? "opacity-70 cursor-wait" : "bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400"}`}
-                        />
+                        <div className="relative pt-4">
+                            <ParticleBurst trigger={showBurst} />
+                            <AnimatedButton
+                                text={status === "processing" ? "Broadcasting Transfer..." : "Confirm Sequence & Transfer"}
+                                disabled={loading}
+                                icon={RefreshCw}
+                                className={`w-full py-4 text-lg ${status === "processing" ? "opacity-70 cursor-wait bg-slate-800" : "bg-slate-900 border-indigo-500/50 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"}`}
+                            />
+                        </div>
                     </form>
                 )}
             </GlassCard>

@@ -7,23 +7,28 @@ import BackToDashboardButton from '../components/BackToDashboardButton';
 import QRScanner from '../components/QRScanner';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 import DownloadCertificate from '../components/DownloadCertificate';
-import { verifyWarranty } from '../utils/blockchain';
+import HashDisplay from '../components/HashDisplay';
+import { verifyWarranty, getFallbackProduct } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
 import WarrantyArtifact from '../contracts/Warranty.json';
-import { Search, CheckCircle, XCircle, QrCode, User, Calendar, Clock, MapPin, Download, Settings } from 'lucide-react';
+import { Search, CheckCircle, XCircle, QrCode, User, Calendar, Clock, Download, Settings, RefreshCcw, Cpu } from 'lucide-react';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const VerifyWarranty = () => {
+    usePageTitle('Verify Warranty');
     const { contract } = useWallet();
     const [productId, setProductId] = useState("");
     const [result, setResult] = useState(null);
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [showScanner, setShowScanner] = useState(false);
     const [autoDownload, setAutoDownload] = useState(false);
+    
+    // State Machine: 'IDLE' | 'SCANNING' | 'VALIDATING' | 'RESULT'
+    const [step, setStep] = useState('IDLE');
+    const [hashDecoded, setHashDecoded] = useState("");
 
-    // Fallback for read-only if not connected
+    // Read-only fallback
     const getReadOnlyContract = async () => {
         try {
             if (window.ethereum) {
@@ -36,13 +41,32 @@ const VerifyWarranty = () => {
         return null;
     };
 
-    const handleVerify = async (e) => {
-        if (e) e.preventDefault();
-        if (!productId) return;
+    // Hash Decrypt Animation
+    useEffect(() => {
+        if (step === 'VALIDATING') {
+            let iterations = 0;
+            const target = productId || "0xPROCESSING_DATA";
+            const interval = setInterval(() => {
+                setHashDecoded(target.split("").map((char, index) => {
+                    if (index < iterations) return char;
+                    return String.fromCharCode(33 + Math.floor(Math.random() * 94));
+                }).join(""));
+                if (iterations >= target.length) clearInterval(interval);
+                iterations += 1/2;
+            }, 30);
+            return () => clearInterval(interval);
+        }
+    }, [step, productId]);
 
-        setLoading(true);
+    // Main Executor
+    const executeVerification = async (targetId) => {
+        if (!targetId) return;
+        setStep('VALIDATING');
         setError("");
         setResult(null);
+
+        // Artificial delay for animation
+        await new Promise(r => setTimeout(r, 1500)); 
 
         try {
             let activeContract = contract;
@@ -54,51 +78,42 @@ const VerifyWarranty = () => {
                 throw new Error("Cannot connect to blockchain. Please connect wallet.");
             }
 
-            const data = await verifyWarranty(activeContract, productId);
+            const data = await verifyWarranty(activeContract, targetId);
             setResult(data);
+            
+            // Auto download
+            if (autoDownload && data.isValid) {
+                setTimeout(() => {
+                    generateCertificate({
+                        ...data,
+                        productId: targetId,
+                        contractAddress: ContractAddress.Warranty
+                    });
+                }, 1000);
+            }
         } catch (err) {
-            console.error(err);
-            setError("Product not found or error fetching data.");
+            console.warn("Blockchain read failed. Checking local backup...");
+            const fallbackData = getFallbackProduct(targetId);
+            if (fallbackData) {
+                setResult(fallbackData);
+            } else {
+                setError("Product not found on blockchain or local backup.");
+            }
         } finally {
-            setLoading(false);
+            setStep('RESULT');
         }
     };
 
-    const handleScan = (data) => {
+    const handleVerifySubmit = (e) => {
+        if (e) e.preventDefault();
+        executeVerification(productId);
+    };
+
+    const handleScanComplete = (data) => {
         if (data) {
             setProductId(data);
-            setShowScanner(false);
-            setLoading(true);
-            setError("");
-            setResult(null);
-
-            (async () => {
-                try {
-                    let activeContract = contract;
-                    if (!activeContract) {
-                        activeContract = await getReadOnlyContract();
-                    }
-                    if (!activeContract) throw new Error("No connection");
-
-                    const res = await verifyWarranty(activeContract, data);
-                    setResult(res);
-
-                    // Auto download if enabled
-                    if (autoDownload && res.isValid) {
-                        setTimeout(() => {
-                            generateCertificate({
-                                ...res,
-                                productId: data,
-                                contractAddress: ContractAddress.Warranty
-                            });
-                        }, 1000);
-                    }
-                } catch (err) {
-                    setError("Product not found via scan.");
-                } finally {
-                    setLoading(false);
-                }
-            })();
+            setStep('IDLE'); // Transition from bottom sheet back to main frame
+            executeVerification(data);
         }
     };
 
@@ -106,165 +121,225 @@ const VerifyWarranty = () => {
         <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 
+            className={`flex flex-col items-center justify-center p-8 rounded-[2rem] border-2 relative overflow-hidden
             ${isValid
-                    ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
-                    : 'bg-red-500/10 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)]'}`}
+                    ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.3)]'
+                    : 'bg-red-500/10 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.3)]'}`}
         >
-            {isValid ? <CheckCircle size={48} className="text-emerald-500 mb-2" /> : <XCircle size={48} className="text-red-500 mb-2" />}
-            <h3 className={`text-2xl font-bold ${isValid ? 'text-emerald-400' : 'text-red-400'}`}>
+            {/* Glowing orb behind icon */}
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full blur-2xl opacity-20 pointer-events-none 
+                ${isValid ? 'bg-emerald-500' : 'bg-red-500'}`} 
+            />
+            {isValid ? <CheckCircle size={64} className="text-emerald-500 mb-4 drop-shadow-[0_0_15px_rgba(16,185,129,0.8)] relative z-10" /> : <XCircle size={64} className="text-red-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)] relative z-10" />}
+            <h3 className={`text-3xl font-black tracking-tight relative z-10 ${isValid ? 'text-emerald-400' : 'text-red-400'}`}>
                 {isValid ? "WARRANTY VALID" : "WARRANTY EXPIRED"}
             </h3>
-            <p className={`text-lg mt-2 ${isValid ? 'text-emerald-200' : 'text-red-300'}`}>
-                {isValid ? (
-                    <span className="font-mono">{days} Days Remaining</span>
-                ) : (
-                    "Warranty Period Over"
-                )}
+            <p className={`text-xl mt-2 font-mono relative z-10 ${isValid ? 'text-emerald-200' : 'text-red-300'}`}>
+                {isValid ? `${days} Days Remaining` : "Warranty Period Over"}
             </p>
         </motion.div>
     );
 
     return (
-        <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto relative">
-            <BackToDashboardButton />
-            <AnimatePresence>
-                {showScanner && <QRScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
-            </AnimatePresence>
+        <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto relative min-h-[80vh] flex flex-col justify-center">
+            <div className="absolute top-0 left-0">
+                <BackToDashboardButton />
+            </div>
 
-            <GlassCard>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-green-500 bg-clip-text text-transparent mb-6 text-center">
-                    Verify Warranty
-                </h2>
+            {step === 'SCANNING' && (
+                <QRScanner onScan={handleScanComplete} onClose={() => setStep('IDLE')} />
+            )}
 
-                <div className="flex gap-4 mb-8">
-                    <div className="relative flex-1">
-                        <input
-                            value={productId}
-                            onChange={(e) => setProductId(e.target.value)}
-                            placeholder="Enter Product ID"
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-4 pl-4 pr-12 text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                        />
-                        <button
-                            onClick={() => setShowScanner(true)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+            <GlassCard className="relative overflow-hidden min-h-[400px] flex flex-col">
+                <AnimatePresence mode="wait">
+                    
+                    {/* IDLE STATE */}
+                    {step === 'IDLE' && (
+                        <motion.div
+                            key="idle"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+                            className="flex flex-col h-full flex-1"
                         >
-                            <QrCode size={20} />
-                        </button>
-                    </div>
-                    <AnimatedButton
-                        text={loading ? "..." : "Check"}
-                        onClick={handleVerify}
-                        icon={Search}
-                        className="bg-emerald-600 hover:bg-emerald-500"
-                    />
-                </div>
+                            <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent mb-8 text-center pt-4">
+                                Verify Warranty
+                            </h2>
 
-                <div className="flex items-center justify-between mb-6 p-4 bg-white/5 rounded-xl border border-white/10">
-                    <div className="flex items-center gap-2 text-slate-300">
-                        <Settings size={18} className="text-emerald-400" />
-                        <span className="text-sm font-medium">Auto-Download Certificate</span>
-                    </div>
-                    <button
-                        onClick={() => setAutoDownload(!autoDownload)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none 
-                        ${autoDownload ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                    >
-                        <span
-                            className={`${autoDownload ? 'translate-x-6' : 'translate-x-1'}
-                            inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-                        />
-                    </button>
-                </div>
-
-                {error && (
-                    <div className="text-red-400 text-center mb-4 p-3 bg-red-900/20 rounded-xl border border-red-900/50">
-                        {error}
-                    </div>
-                )}
-
-                {result && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
-                    >
-                        <StatusBadge isValid={result.isValid} days={result.daysRemaining} />
-
-                        <div className="bg-white/5 rounded-2xl p-6 border border-white/10 space-y-4">
-                            <h3 className="text-xl font-bold text-white border-b border-white/10 pb-2 mb-4">Product Details</h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <p className="text-slate-400 text-sm mb-1">Product Name</p>
-                                    <p className="text-white font-medium text-lg">{result.productName}</p>
+                            <form onSubmit={handleVerifySubmit} className="flex-1 flex flex-col justify-center gap-6">
+                                <div className="relative group">
+                                    <div className="absolute inset-0 bg-cyan-400/20 rounded-xl blur-xl transition-all group-focus-within:opacity-100 opacity-0" />
+                                    <input
+                                        value={productId}
+                                        onChange={(e) => setProductId(e.target.value)}
+                                        placeholder="Enter Product ID or Hash"
+                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-5 pl-5 pr-14 text-white text-lg font-mono focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all relative z-10 shadow-inner shadow-black/50"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep('SCANNING')}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-cyan-500 hover:text-cyan-300 p-2 z-20 hover:scale-110 hover:rotate-3 transition-transform"
+                                    >
+                                        <QrCode size={24} />
+                                    </button>
                                 </div>
-                                <div>
-                                    <p className="text-slate-400 text-sm mb-1">Product ID</p>
-                                    <p className="text-white font-mono">{productId}</p>
+
+                                <AnimatedButton
+                                    text="Initiate Verification"
+                                    onClick={handleVerifySubmit}
+                                    icon={Search}
+                                    className="w-full py-4 text-lg bg-slate-900"
+                                />
+                            </form>
+
+                            <div className="mt-8 flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                                <div className="flex items-center gap-2 text-slate-300">
+                                    <Settings size={18} className="text-cyan-400" />
+                                    <span className="text-sm font-medium">Auto-Download PDF</span>
                                 </div>
+                                <button
+                                    onClick={() => setAutoDownload(!autoDownload)}
+                                    className={`relative h-6 w-11 rounded-full transition-colors focus:outline-none 
+                                    ${autoDownload ? 'bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-slate-700'}`}
+                                >
+                                    <span className={`${autoDownload ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform mt-1`} />
+                                </button>
                             </div>
+                        </motion.div>
+                    )}
 
-                            <div className="grid grid-cols-2 gap-4 pt-4">
-                                <div className="flex items-center gap-3">
-                                    <Calendar className="text-emerald-400" size={20} />
-                                    <div>
-                                        <p className="text-slate-400 text-xs">Start Date</p>
-                                        <p className="text-white text-sm">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</p>
+                    {/* VALIDATING STATE */}
+                    {step === 'VALIDATING' && (
+                        <motion.div
+                            key="validating"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0, scale: 1.1 }}
+                            className="flex-1 flex flex-col items-center justify-center py-12"
+                        >
+                            <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
+                                {/* Outer rotating ring */}
+                                <div className="absolute inset-0 border-t-2 border-b-2 border-cyan-400 rounded-full animate-[spin_2s_linear_infinite] opacity-50 shadow-[0_0_15px_rgba(34,211,238,0.5)]"></div>
+                                {/* Inner opposite rotating ring */}
+                                <div className="absolute inset-2 border-l-2 border-r-2 border-indigo-400 rounded-full animate-[spin_1.5s_linear_infinite_reverse] opacity-70"></div>
+                                <Cpu size={40} className="text-cyan-400 animate-pulse drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+                            </div>
+                            
+                            <h3 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">Decoupling Hash</h3>
+                            
+                            <div className="bg-slate-950 border border-cyan-500/30 px-6 py-3 rounded-xl font-mono text-cyan-400 tracking-widest shadow-inner shadow-cyan-900/50 min-w-[300px] text-center">
+                                {hashDecoded}
+                            </div>
+                            <p className="text-slate-500 text-sm mt-6 animate-pulse">Querying distributed ledger...</p>
+                        </motion.div>
+                    )}
+
+                    {/* RESULT STATE */}
+                    {step === 'RESULT' && (
+                        <motion.div
+                            key="result"
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="flex-1 space-y-6 pt-2"
+                        >
+                            {error ? (
+                                <div className="flex flex-col items-center justify-center h-64 text-center">
+                                    <XCircle size={64} className="text-red-500 mb-6 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
+                                    <h3 className="text-2xl font-bold text-white mb-2">Record Not Found</h3>
+                                    <p className="text-slate-400 mb-8 max-w-xs">{error}</p>
+                                    <AnimatedButton text="Search Again" onClick={() => setStep('IDLE')} icon={RefreshCcw} />
+                                </div>
+                            ) : result && (
+                                <div className="space-y-6">
+                                    <StatusBadge isValid={result.isValid} days={result.daysRemaining} />
+
+                                    <div className="bg-white/5 rounded-3xl p-6 border border-white/10 space-y-4 backdrop-blur-md">
+                                        <h3 className="text-xl font-bold text-white border-b border-white/10 pb-2 mb-4">Product Payload</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <p className="text-slate-500 text-xs font-mono mb-1 tracking-wider uppercase">Designation</p>
+                                                <p className="text-cyan-50 font-medium text-lg">{result.productName}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-500 text-xs font-mono mb-1 tracking-wider uppercase">Token ID</p>
+                                                <p className="text-cyan-400 font-mono text-sm break-all">{productId}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-emerald-500/10"><Calendar className="text-emerald-400" size={16} /></div>
+                                                <div>
+                                                    <p className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Minted</p>
+                                                    <p className="text-slate-200 text-xs font-mono">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-red-500/10"><Clock className="text-red-400" size={16} /></div>
+                                                <div>
+                                                    <p className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Expires</p>
+                                                    <p className="text-slate-200 text-xs font-mono">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-3xl p-6 border border-indigo-500/20 space-y-4">
+                                        <h3 className="text-lg font-bold text-indigo-300 border-b border-indigo-500/20 pb-2 flex items-center gap-2">
+                                            <User size={18} /> Owner Node
+                                        </h3>
+                                        <div className="space-y-3 font-mono text-sm">
+                                            <div className="flex justify-between border-b mx-4 border-white/5 pb-2">
+                                                <span className="text-slate-500">Identity</span>
+                                                <span className="text-slate-200">{result.ownerName}</span>
+                                            </div>
+                                            <div className="flex justify-between border-b mx-4 border-white/5 pb-2">
+                                                <span className="text-slate-500">Contact</span>
+                                                <span className="text-slate-200">{result.ownerContact}</span>
+                                            </div>
+                                            <div className="pt-2 mx-4">
+                                                <HashDisplay 
+                                                    label="Wallet Hash" 
+                                                    value={result.ownerAddress} 
+                                                    isBackup={result.isFallback}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 flex flex-col items-center gap-6">
+                                        <div className="p-4 bg-white/5 rounded-[2rem] border border-white/10 shadow-2xl shadow-cyan-900/20">
+                                            <QRCodeDisplay value={`${window.location.origin}/verify/${productId}`} title="" />
+                                        </div>
+
+                                        <div className="w-full grid grid-cols-2 gap-4">
+                                            <button
+                                                onClick={() => setStep('IDLE')}
+                                                className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-all active:scale-95"
+                                            >
+                                                <Search size={18} />
+                                                New Scan
+                                            </button>
+                                            <button
+                                                onClick={() => generateCertificate({
+                                                    ...result,
+                                                    productId,
+                                                    contractAddress: ContractAddress.Warranty
+                                                })}
+                                                className="relative group overflow-hidden flex items-center justify-center gap-2 bg-slate-900 border border-transparent px-6 py-4 rounded-xl text-white font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-indigo-500 opacity-50 blur-sm group-hover:opacity-100 transition-opacity" />
+                                                <div className="absolute inset-[1px] bg-slate-900 rounded-[11px]" />
+                                                <Download size={18} className="relative z-10 text-cyan-400 group-hover:animate-bounce" />
+                                                <span className="relative z-10">Export PDF</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <Clock className="text-red-400" size={20} />
-                                    <div>
-                                        <p className="text-slate-400 text-xs">End Date</p>
-                                        <p className="text-white text-sm">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-blue-500/5 rounded-2xl p-6 border border-blue-500/10 space-y-3">
-                            <h3 className="text-lg font-bold text-blue-400 border-b border-blue-500/10 pb-2 mb-4 flex items-center gap-2">
-                                <User size={20} /> Owner Information
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-slate-400">Name</span>
-                                    <span className="text-white font-medium">{result.ownerName}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-400">Contact</span>
-                                    <span className="text-white">{result.ownerContact}</span>
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-slate-400 text-sm">Wallet Address</span>
-                                    <span className="font-mono text-xs text-blue-300 bg-blue-900/30 px-3 py-2 rounded-lg break-all">
-                                        {result.ownerAddress}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="pt-4 flex flex-col items-center gap-4">
-                            <QRCodeDisplay
-                                value={`${window.location.origin}/verify/${productId}`}
-                                title="Verification QR"
-                            />
-
-                            <button
-                                onClick={() => generateCertificate({
-                                    ...result,
-                                    productId,
-                                    contractAddress: ContractAddress.Warranty
-                                })}
-                                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95 mt-4"
-                            >
-                                <Download size={20} />
-                                Download Official Certificate
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </GlassCard>
         </div>
     );

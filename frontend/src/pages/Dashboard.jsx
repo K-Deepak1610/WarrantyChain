@@ -4,9 +4,27 @@ import BackToHomeButton from '../components/BackToHomeButton';
 import { PlusCircle, CheckCircle, Shield, RefreshCw, Wifi, Database } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { shortenAddress } from '../utils/blockchain';
+import HexProductCard from '../components/HexProductCard';
+import { useState, useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const Dashboard = () => {
+    usePageTitle('Dashboard');
     const { isConnected, account } = useWallet();
+    const [products, setProducts] = useState([]);
+
+    useEffect(() => {
+        const loaded = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('product_')) {
+                try {
+                    loaded.push(JSON.parse(localStorage.getItem(key)));
+                } catch (e) {}
+            }
+        }
+        setProducts(loaded);
+    }, []);
 
     const StatCard = ({ label, value, icon: Icon, color }) => (
         <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
@@ -62,31 +80,57 @@ const Dashboard = () => {
                 </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                 <DashboardCard
-                    title="Register Product"
+                    title="Register"
                     icon={PlusCircle}
                     to="/register"
                     color="blue"
                 />
                 <DashboardCard
-                    title="Verify Warranty"
+                    title="Verify Product"
                     icon={CheckCircle}
                     to="/verify-warranty"
                     color="green"
                 />
                 <DashboardCard
-                    title="Verify Ownership"
+                    title="Check Owner"
                     icon={Shield}
                     to="/verify-ownership"
                     color="purple"
                 />
                 <DashboardCard
-                    title="Transfer Ownership"
+                    title="Transfer"
                     icon={RefreshCw}
                     to="/transfer-ownership"
                     color="orange"
                 />
+            </div>
+
+            {/* Registered Products Gallery */}
+            <div className="max-w-6xl mx-auto pt-12">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent mb-8">
+                    Registered Assets
+                </h2>
+                
+                {products.length === 0 ? (
+                    <div className="text-center p-12 glass-card rounded-2xl border-white/5">
+                        <p className="text-slate-500">No assets detected in current environment.</p>
+                    </div>
+                ) : (
+                    <motion.div 
+                        initial="hidden"
+                        animate="visible"
+                        variants={{
+                            visible: { transition: { staggerChildren: 0.08 } }
+                        }}
+                        className="flex flex-wrap gap-8 justify-center lg:justify-start"
+                    >
+                        {products.map(p => (
+                            <HexProductCard key={p.id} product={p} />
+                        ))}
+                    </motion.div>
+                )}
             </div>
         </div>
     );

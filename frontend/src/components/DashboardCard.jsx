@@ -16,9 +16,9 @@ const DashboardCard = ({ title, icon: Icon, to, color = "blue" }) => {
                 whileTap={{ scale: 0.98 }}
                 className="relative group h-64 w-full"
             >
-                <div className={`absolute inset-0 bg-gradient-to-br ${gradients[color]} opacity-20 group-hover:opacity-30 rounded-3xl blur-xl transition-all duration-500`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${gradients[color]} opacity-10 group-hover:opacity-20 rounded-3xl blur-xl transition-all duration-500`} />
 
-                <div className="relative h-full bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col justify-between overflow-hidden group-hover:border-white/20 transition-all duration-300">
+                <div className="relative h-full glass-card glass-card-hover rounded-3xl p-8 flex flex-col justify-between overflow-hidden">
                     <div className={`text-${color}-400 mb-4`}>
                         <Icon size={48} />
                     </div>

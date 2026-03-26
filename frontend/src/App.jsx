@@ -2,12 +2,15 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
+import TransferOwnership from './pages/TransferOwnership';
+import PublicVerify from './pages/PublicVerify';
 import Register from './pages/Register';
 import VerifyWarranty from './pages/VerifyWarranty';
 import VerifyOwnership from './pages/VerifyOwnership';
-import TransferOwnership from './pages/TransferOwnership';
-import PublicVerify from './pages/PublicVerify';
 import { WalletProvider, useWallet } from './context/WalletContext';
+import LiveTicker from './components/LiveTicker';
+import CommandPalette from './components/CommandPalette';
+import { useState } from 'react';
 
 // Protected Component
 const ProtectedRoute = ({ children }) => {
@@ -24,10 +27,16 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const AppContent = () => {
+    const [showCommandPalette, setShowCommandPalette] = useState(false);
+
     return (
-        <div className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
-            <div className="fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950 pointer-events-none" />
-            <Navbar />
+        <div className="min-h-screen bg-slate-950 text-white selection:bg-cyan-500/30 overflow-hidden relative pb-8">
+            <div className="fixed inset-0 z-0 overflow-hidden bg-slate-950">
+                <div className="perspective-grid" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent pointer-events-none" />
+            </div>
+            <Navbar setShowCommandPalette={setShowCommandPalette} />
+            <CommandPalette isOpen={showCommandPalette} setIsOpen={setShowCommandPalette} />
             <div className="relative z-10">
                 <Routes>
                     <Route path="/" element={<Home />} />
@@ -43,6 +52,7 @@ const AppContent = () => {
                     <Route path="/verify/:productId" element={<PublicVerify />} />
                 </Routes>
             </div>
+            <LiveTicker />
         </div>
     );
 };

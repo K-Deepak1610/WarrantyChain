@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ethers } from 'ethers';
 import GlassCard from '../components/GlassCard';
 import AnimatedButton from '../components/AnimatedButton';
-import { verifyWarranty, verifyOwnership } from '../utils/blockchain';
+import HashDisplay from '../components/HashDisplay';
+import { verifyWarranty, verifyOwnership, getFallbackProduct } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
@@ -21,8 +22,10 @@ import {
     ChevronLeft,
     Loader2
 } from 'lucide-react';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const PublicVerify = () => {
+    usePageTitle('Product Verification');
     const { productId } = useParams();
     const { contract } = useWallet();
     const [result, setResult] = useState(null);
@@ -50,8 +53,16 @@ const PublicVerify = () => {
                 productId
             });
         } catch (err) {
-            console.error(err);
-            setError("The product with this ID could not be found on the blockchain.");
+            console.warn("Blockchain read failed. Checking local backup...");
+            const fallbackData = getFallbackProduct(productId);
+            if (fallbackData) {
+                setResult({
+                    ...fallbackData,
+                    history: fallbackData.history || []
+                });
+            } else {
+                setError("The product with this ID could not be found on the blockchain or local backup.");
+            }
         } finally {
             setLoading(false);
         }
@@ -88,14 +99,14 @@ const PublicVerify = () => {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-8"
+                    className="space-y-6"
                 >
                     {/* Header Certificate Style */}
-                    <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-[2.5rem] p-1 border border-white/10 shadow-2xl relative overflow-hidden">
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-[2.5rem] p-1 border border-white/10 shadow-[0_0_30px_rgba(59,130,246,0.3)] relative overflow-hidden">
                         {/* Decorative background circle */}
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -mr-32 -mt-32" />
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
 
-                        <div className="bg-slate-900/50 rounded-[2.3rem] p-8 md:p-12">
+                        <div className="glass-card rounded-[2.3rem] p-8 md:p-12 border-none shadow-none">
                             <div className="flex flex-col md:flex-row justify-between items-start gap-8 border-b border-white/5 pb-8 mb-8">
                                 <div>
                                     <h1 className="text-sm font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Official Verification</h1>
@@ -135,9 +146,12 @@ const PublicVerify = () => {
                                                 <span className="text-slate-400">Contact Ref</span>
                                                 <span className="text-white">{result.ownerContact}</span>
                                             </div>
-                                            <div className="pt-2">
-                                                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-1">Blockchain Address</p>
-                                                <p className="text-[10px] font-mono text-blue-300 break-all bg-black/30 p-2 rounded-lg">{result.ownerAddress}</p>
+                                            <div className="pt-4">
+                                                <HashDisplay 
+                                                    label="Blockchain Address" 
+                                                    value={result.ownerAddress} 
+                                                    isBackup={result.isFallback} 
+                                                />
                                             </div>
                                         </div>
                                     </section>
@@ -201,12 +215,14 @@ const PublicVerify = () => {
                                     <div className="flex overflow-x-auto pb-4 gap-6 scrollbar-hide">
                                         {result.history.map((record, i) => (
                                             <div key={i} className="min-w-[200px] bg-white/5 p-4 rounded-2xl border border-white/5 relative">
-                                                <div className="flex items-center gap-2 mb-2">
+                                                <div className="flex items-center gap-2 mb-4">
                                                     <div className="w-2 h-2 rounded-full bg-blue-500" />
                                                     <span className="text-white font-bold text-sm">{record.ownerName}</span>
                                                 </div>
-                                                <p className="text-slate-500 text-[10px] font-mono mb-2">{record.ownerAddress.slice(0, 10)}...</p>
-                                                <p className="text-slate-400 text-[10px]">{new Date(record.transferDate * 1000).toLocaleDateString()}</p>
+                                                <div className="mb-3">
+                                                    <HashDisplay value={record.ownerAddress} isBackup={result.isFallback} />
+                                                </div>
+                                                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">{new Date(record.transferDate * 1000).toLocaleDateString()}</p>
                                                 {i === result.history.length - 1 && (
                                                     <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[8px] font-bold uppercase">Current</div>
                                                 )}

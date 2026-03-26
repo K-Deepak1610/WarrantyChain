@@ -38,8 +38,13 @@ export const WalletProvider = ({ children }) => {
 
     // Event listeners for MetaMask
     useEffect(() => {
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (accounts) => {
+        let ethProvider = window.ethereum;
+        if (ethProvider?.providers) {
+            ethProvider = ethProvider.providers.find(p => p.isMetaMask) || ethProvider.providers[0];
+        }
+
+        if (ethProvider) {
+            ethProvider.on('accountsChanged', (accounts) => {
                 if (accounts.length > 0) {
                     setAccount(accounts[0]);
                     initializeEthers(accounts[0]);
@@ -48,7 +53,7 @@ export const WalletProvider = ({ children }) => {
                 }
             });
 
-            window.ethereum.on('chainChanged', () => {
+            ethProvider.on('chainChanged', () => {
                 window.location.reload();
             });
         }
@@ -56,7 +61,11 @@ export const WalletProvider = ({ children }) => {
 
     const initializeEthers = async (currentAccount) => {
         try {
-            const provider = new ethers.BrowserProvider(window.ethereum);
+            let ethProvider = window.ethereum;
+            if (ethProvider?.providers) {
+                ethProvider = ethProvider.providers.find(p => p.isMetaMask) || ethProvider.providers[0];
+            }
+            const provider = new ethers.BrowserProvider(ethProvider);
             setProvider(provider);
 
             const signer = await provider.getSigner();
@@ -74,14 +83,19 @@ export const WalletProvider = ({ children }) => {
     };
 
     const connectWallet = async () => {
-        if (!window.ethereum) {
-            alert("MetaMask not detected");
+        let ethProvider = window.ethereum;
+        if (ethProvider?.providers) {
+            ethProvider = ethProvider.providers.find(p => p.isMetaMask) || ethProvider.providers[0];
+        }
+
+        if (!ethProvider) {
+            alert("Wallet object not found. Please refresh the page if you just installed MetaMask.");
             return;
         }
 
         try {
             setLoading(true);
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
             const account = accounts[0];
             setAccount(account);
             initializeEthers(account);

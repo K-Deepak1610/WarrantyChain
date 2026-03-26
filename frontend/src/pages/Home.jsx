@@ -2,8 +2,11 @@ import { motion } from 'framer-motion';
 import AnimatedButton from '../components/AnimatedButton';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Hexagon, ShieldCheck, Zap, Lock, QrCode } from 'lucide-react';
+import Logo from '../components/Logo';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const Home = () => {
+    usePageTitle('Trustless Warranties');
     const navigate = useNavigate();
 
     const FeatureItem = ({ icon: Icon, text }) => (
@@ -17,15 +20,15 @@ const Home = () => {
     );
 
     return (
-        <div className="min-h-screen flex flex-col justify-start items-center relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950">
+        <div className="min-h-screen flex flex-col justify-start items-center relative overflow-hidden bg-transparent pt-20">
 
-            {/* 1. Background Layer - STRICTLY Z-0 and POINTER-EVENTS-NONE, Top Aligned */}
+            {/* 1. Background Layer - Add subtle local glow without blocking global grid */}
             <div className="absolute top-0 left-0 w-full flex justify-center pointer-events-none z-0">
-                <div className="w-[600px] h-[500px] bg-purple-600/20 blur-[120px] rounded-full" />
+                <div className="w-[800px] h-[500px] bg-indigo-600/10 blur-[120px] rounded-full mix-blend-screen" />
 
                 {/* Side glows */}
-                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
+                <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl mix-blend-screen" />
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl mix-blend-screen" />
             </div>
 
             {/* 2. Content Layer - Z-10, Top Padding for Offset */}
@@ -38,22 +41,9 @@ const Home = () => {
                     className="flex flex-col items-center"
                 >
                     {/* Logo */}
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                        className="mb-8 text-blue-500 opacity-90 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]"
-                    >
-                        <Hexagon size={80} strokeWidth={1.5} />
-                    </motion.div>
-
-                    {/* Headings */}
-                    <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(139,92,246,0.5)]">
-                        WarrantyChain
-                    </h1>
-
-                    <h2 className="text-xl md:text-2xl font-medium text-slate-300 tracking-wide mb-8 max-w-2xl">
-                        Blockchain-Based Digital Warranty & Ownership Verification System
-                    </h2>
+                    <div className="mb-12">
+                        <Logo size="lg" />
+                    </div>
 
                     {/* Description */}
                     <div className="max-w-2xl mx-auto mb-10">
@@ -77,10 +67,11 @@ const Home = () => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => navigate('/dashboard')}
-                            className="group flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-[length:200%_auto] hover:bg-right transition-all duration-500 text-white font-bold text-lg shadow-[0_0_20px_rgba(124,58,237,0.5)] hover:shadow-[0_0_35px_rgba(124,58,237,0.7)] cursor-pointer"
+                            className="group flex items-center justify-center gap-3 px-10 py-5 rounded-2xl bg-slate-900 border border-cyan-500/50 hover:border-cyan-400 transition-all duration-300 text-white font-bold text-xl shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.6)] overflow-hidden relative"
                         >
-                            <span>Enter Dashboard</span>
-                            <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 group-hover:from-cyan-400/40 group-hover:to-indigo-400/40 transition-colors" />
+                            <span className="relative z-10 uppercase tracking-widest text-cyan-50">Enter Mainnet</span>
+                            <ArrowRight className="relative z-10 group-hover:translate-x-2 transition-transform text-cyan-400" />
                         </motion.button>
                     </div>
                 </motion.div>
