@@ -229,20 +229,22 @@ const TransferOwnership = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Entity Name</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">New Owner Name</label>
                                     <input
                                         name="newOwnerName" required
                                         value={formData.newOwnerName}
                                         className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
+                                        placeholder="Enter full name"
                                         onChange={handleChange}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Transmission Vector (Contact)</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">New Phone Number</label>
                                     <input
                                         name="newOwnerContact" required
                                         value={formData.newOwnerContact}
                                         className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
+                                        placeholder="Enter phone number"
                                         onChange={handleChange}
                                     />
                                 </div>

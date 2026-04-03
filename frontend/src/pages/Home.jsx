@@ -70,7 +70,7 @@ const Home = () => {
                             className="group flex items-center justify-center gap-3 px-10 py-5 rounded-2xl bg-slate-900 border border-cyan-500/50 hover:border-cyan-400 transition-all duration-300 text-white font-bold text-xl shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.6)] overflow-hidden relative"
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 group-hover:from-cyan-400/40 group-hover:to-indigo-400/40 transition-colors" />
-                            <span className="relative z-10 uppercase tracking-widest text-cyan-50">Enter Mainnet</span>
+                            <span className="relative z-10 uppercase tracking-widest text-cyan-50">Get Started</span>
                             <ArrowRight className="relative z-10 group-hover:translate-x-2 transition-transform text-cyan-400" />
                         </motion.button>
                     </div>

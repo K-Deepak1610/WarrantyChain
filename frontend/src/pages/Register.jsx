@@ -130,7 +130,7 @@ const Register = () => {
                                     name="name" required
                                     value={formData.name}
                                     className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                    placeholder="e.g. MetaGear X 2024"
+                                    placeholder="e.g. iPhone 17 Pro, Dell Laptop"
                                     onChange={handleChange}
                                 />
                             </div>
@@ -155,22 +155,22 @@ const Register = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Identity</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Name</label>
                                 <input
                                     name="ownerName" required
                                     value={formData.ownerName}
                                     className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                    placeholder="Entity Name"
+                                    placeholder="Enter the name"
                                     onChange={handleChange}
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Contact</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Phone Number</label>
                                 <input
                                     name="ownerContact" required
                                     value={formData.ownerContact}
                                     className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                    placeholder="Transmission Vector"
+                                    placeholder="Enter the phone number"
                                     onChange={handleChange}
                                 />
                             </div>
@@ -178,7 +178,7 @@ const Register = () => {
                             <div className="relative pt-6">
                                 <ParticleBurst trigger={showBurst} />
                                 <AnimatedButton
-                                    text={loading ? "Registering Array..." : "Register Asset"}
+                                    text={loading ? "Registering Product..." : "Register Product"}
                                     disabled={loading}
                                     icon={Plus}
                                     className="w-full py-4 text-lg bg-slate-900"
