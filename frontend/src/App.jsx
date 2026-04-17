@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
@@ -16,18 +17,14 @@ import { useState } from 'react';
 const ProtectedRoute = ({ children }) => {
     const { isConnected } = useWallet();
     if (!isConnected) {
-        return (
-            <div className="pt-32 text-center text-slate-400">
-                <p>Please connect your wallet to access this feature.</p>
-                <Navigate to="/dashboard" replace />
-            </div>
-        );
+        return <Navigate to="/dashboard" replace />;
     }
     return children;
 };
 
 const AppContent = () => {
     const [showCommandPalette, setShowCommandPalette] = useState(false);
+    const location = useLocation();
 
     return (
         <div className="min-h-screen bg-slate-950 text-white selection:bg-cyan-500/30 overflow-hidden relative pb-8">
@@ -38,19 +35,21 @@ const AppContent = () => {
             <Navbar setShowCommandPalette={setShowCommandPalette} />
             <CommandPalette isOpen={showCommandPalette} setIsOpen={setShowCommandPalette} />
             <div className="relative z-10">
-                <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
+                <AnimatePresence mode="wait">
+                    <Routes location={location} key={location.pathname}>
+                        <Route path="/" element={<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><Home /></motion.div>} />
+                        <Route path="/dashboard" element={<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><Dashboard /></motion.div>} />
 
-                    {/* Protected Features */}
-                    <Route path="/register" element={<ProtectedRoute><Register /></ProtectedRoute>} />
-                    <Route path="/transfer-ownership" element={<ProtectedRoute><TransferOwnership /></ProtectedRoute>} />
+                        {/* Protected Features */}
+                        <Route path="/register" element={<ProtectedRoute><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><Register /></motion.div></ProtectedRoute>} />
+                        <Route path="/transfer-ownership" element={<ProtectedRoute><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><TransferOwnership /></motion.div></ProtectedRoute>} />
 
-                    {/* Public Features (can fail gracefully if no wallet, handled in page) */}
-                    <Route path="/verify-warranty" element={<VerifyWarranty />} />
-                    <Route path="/verify-ownership" element={<VerifyOwnership />} />
-                    <Route path="/verify/:productId" element={<PublicVerify />} />
-                </Routes>
+                        {/* Public Features */}
+                        <Route path="/verify-warranty" element={<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><VerifyWarranty /></motion.div>} />
+                        <Route path="/verify-ownership" element={<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><VerifyOwnership /></motion.div>} />
+                        <Route path="/verify/:productId" element={<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><PublicVerify /></motion.div>} />
+                    </Routes>
+                </AnimatePresence>
             </div>
             <LiveTicker />
         </div>

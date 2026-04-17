@@ -38,22 +38,30 @@ const TransferOwnership = () => {
     };
 
     const handleConnectNewOwner = async () => {
-        if (window.ethereum) {
-            try {
-                // Warning: Requesting accounts here might conflict if already connected with another account.
-                // Works best if user switches account in metamask then clicks this.
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                if (accounts.length > 0) {
-                    setFormData({ ...formData, newOwner: accounts[0] });
-                }
-            } catch (err) {
-                console.error(err);
+        if (!window.ethereum) {
+            alert("MetaMask is not installed. Please install it to use this feature.");
+            return;
+        }
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (accounts.length > 0) {
+                setFormData(prev => ({ ...prev, newOwner: accounts[0] }));
             }
+        } catch (err) {
+            console.error("Wallet connection failed:", err);
+            alert(err.message || "Failed to connect wallet.");
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!contract) {
+            setStatus("error");
+            setErrorMsg("Smart contract not initialized. Please connect your wallet.");
+            return;
+        }
+
         setLoading(true);
         setStatus("processing");
         setErrorMsg("");

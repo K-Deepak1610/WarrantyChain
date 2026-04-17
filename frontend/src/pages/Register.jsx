@@ -6,7 +6,7 @@ import BackToDashboardButton from '../components/BackToDashboardButton';
 import ParticleBurst from '../components/ParticleBurst';
 import { registerProduct } from '../utils/blockchain';
 import { useWallet } from '../context/WalletContext';
-import { Plus, CheckCircle } from 'lucide-react';
+import { Plus, CheckCircle, AlertCircle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const Register = () => {
@@ -23,6 +23,7 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [showBurst, setShowBurst] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,18 +32,31 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setErrorMsg("");
+        if (!contract) {
+            setErrorMsg("Smart contract not initialized. Please connect your wallet.");
+            setLoading(false);
+            return;
+        }
+
         try {
             // Convert dates to timestamps
             const start = new Date(formData.warrantyStart).getTime() / 1000;
             const end = new Date(formData.warrantyEnd).getTime() / 1000;
+            
+            if (end <= start) {
+                throw new Error("Warranty end date must be after start date.");
+            }
 
-            let currentAddress = "Unknown Wallet";
-            try {
-                if (window.ethereum) {
-                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts.length > 0) currentAddress = accounts[0];
-                }
-            } catch (e) {}
+            if (!window.ethereum) {
+                throw new Error("MetaMask is required to register a product.");
+            }
+
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (!accounts || accounts.length === 0) {
+                throw new Error("No wallet account connected.");
+            }
+            const currentAddress = accounts[0];
 
             const productDetails = {
                 ...formData,
@@ -58,7 +72,6 @@ const Register = () => {
 
             await registerProduct(contract, productDetails);
             
-            
             // --- DATA PERSISTENCE FALLBACK ---
             localStorage.setItem(`product_${productDetails.id}`, JSON.stringify(productDetails));
             
@@ -66,10 +79,11 @@ const Register = () => {
             setTimeout(() => {
                 setSuccess(true);
                 setShowBurst(false);
+                setLoading(false); // ✅ Fixed: was missing on success path
             }, 800);
         } catch (error) {
             console.error(error);
-            alert("Registration failed. Ensure wallet is connected.");
+            setErrorMsg(error.reason || error.message || "Registration failed. Ensure wallet is connected.");
             setLoading(false);
         }
     };
@@ -87,6 +101,17 @@ const Register = () => {
                     <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-6 text-center">
                         Register New Product
                     </h2>
+
+                    {!success && errorMsg && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-start gap-3 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm mb-4"
+                        >
+                            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                            <span>{errorMsg}</span>
+                        </motion.div>
+                    )}
 
                     {success ? (
                         <motion.div

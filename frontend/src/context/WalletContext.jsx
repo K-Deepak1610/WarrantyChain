@@ -59,12 +59,18 @@ export const WalletProvider = ({ children }) => {
         }
     }, []);
 
-    const initializeEthers = async (currentAccount) => {
+    const initializeEthers = React.useCallback(async (currentAccount) => {
         try {
             let ethProvider = window.ethereum;
             if (ethProvider?.providers) {
                 ethProvider = ethProvider.providers.find(p => p.isMetaMask) || ethProvider.providers[0];
             }
+            
+            if (!ethProvider) {
+                console.warn("No ethereum provider found");
+                return;
+            }
+
             const provider = new ethers.BrowserProvider(ethProvider);
             setProvider(provider);
 
@@ -80,7 +86,7 @@ export const WalletProvider = ({ children }) => {
         } catch (error) {
             console.error("Error initializing ethers:", error);
         }
-    };
+    }, []);
 
     const connectWallet = async () => {
         let ethProvider = window.ethereum;
@@ -124,17 +130,19 @@ export const WalletProvider = ({ children }) => {
         }
     };
 
+    const contextValue = React.useMemo(() => ({
+        account,
+        contract,
+        provider,
+        signer,
+        connectWallet,
+        disconnectWallet,
+        loading,
+        isConnected: !!account
+    }), [account, contract, provider, signer, loading]);
+
     return (
-        <WalletContext.Provider value={{
-            account,
-            contract,
-            provider,
-            signer,
-            connectWallet,
-            disconnectWallet,
-            loading,
-            isConnected: !!account
-        }}>
+        <WalletContext.Provider value={contextValue}>
             {children}
         </WalletContext.Provider>
     );

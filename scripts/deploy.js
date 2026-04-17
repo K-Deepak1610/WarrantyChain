@@ -22,7 +22,7 @@ async function main() {
         fs.mkdirSync(contractsDir, { recursive: true });
     }
 
-    const artifact = artifacts.readArtifactSync("Warranty");
+    const artifact = hre.artifacts.readArtifactSync("Warranty");
 
     fs.writeFileSync(
         path.join(contractsDir, "contract-address.json"),

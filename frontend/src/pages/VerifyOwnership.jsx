@@ -29,6 +29,35 @@ const VerifyOwnership = () => {
         setError("");
         setResult(null);
 
+        // If no contract (no wallet connected), go straight to localStorage fallback
+        if (!contract) {
+            const backup = localStorage.getItem(`product_${targetId}`);
+            if (backup) {
+                try {
+                    const parsed = JSON.parse(backup);
+                    const history = parsed.history && parsed.history.length > 0 ? parsed.history : [{
+                        ownerName: parsed.ownerName,
+                        ownerContact: parsed.ownerContact,
+                        ownerAddress: parsed.ownerAddress || null,
+                        transferDate: parsed.warrantyStart
+                    }];
+                    setResult({
+                        ...parsed,
+                        productId: parsed.id,
+                        productName: parsed.name,
+                        history: history,
+                        isFallback: true
+                    });
+                } catch (e) {
+                    setError("Product not found. Connect wallet for live verification.");
+                }
+            } else {
+                setError("No wallet connected and product not in local cache.");
+            }
+            setLoading(false);
+            return;
+        }
+
         try {
             const [ownershipData, warrantyData] = await Promise.all([
                 verifyOwnership(contract, targetId),

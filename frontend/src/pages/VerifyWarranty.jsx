@@ -34,6 +34,10 @@ const VerifyWarranty = () => {
             if (window.ethereum) {
                 const provider = new ethers.BrowserProvider(window.ethereum);
                 return new ethers.Contract(ContractAddress.Warranty, WarrantyArtifact.abi, provider);
+            } else {
+                // Public RPC fallback for users without MetaMask
+                const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+                return new ethers.Contract(ContractAddress.Warranty, WarrantyArtifact.abi, provider);
             }
         } catch (e) {
             console.warn("Read-only provider failed", e);
