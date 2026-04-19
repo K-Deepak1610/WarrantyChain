@@ -6,12 +6,16 @@ import BackToDashboardButton from '../components/BackToDashboardButton';
 import ParticleBurst from '../components/ParticleBurst';
 import { registerProduct } from '../utils/blockchain';
 import { useWallet } from '../context/WalletContext';
-import { Plus, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useTransaction } from '../hooks/useTransaction';
+import TransactionModal from '../components/TransactionModal';
 
 const Register = () => {
     usePageTitle('Register Product');
-    const { contract } = useWallet();
+    const { contract, isConnected, connectWallet, account } = useWallet();
+    const { stage, status, error, txHash, metadata, execute, reset } = useTransaction();
+    
     const [formData, setFormData] = useState({
         id: "",
         name: "",
@@ -20,10 +24,7 @@ const Register = () => {
         ownerName: "",
         ownerContact: ""
     });
-    const [loading, setLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
     const [showBurst, setShowBurst] = useState(false);
-    const [errorMsg, setErrorMsg] = useState("");
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,11 +32,9 @@ const Register = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setErrorMsg("");
+        
         if (!contract) {
-            setErrorMsg("Smart contract not initialized. Please connect your wallet.");
-            setLoading(false);
+            alert("Smart contract not initialized. Please connect your wallet.");
             return;
         }
 
@@ -45,52 +44,57 @@ const Register = () => {
             const end = new Date(formData.warrantyEnd).getTime() / 1000;
             
             if (end <= start) {
-                throw new Error("Warranty end date must be after start date.");
+                alert("Warranty end date must be after start date.");
+                return;
             }
-
-            if (!window.ethereum) {
-                throw new Error("MetaMask is required to register a product.");
-            }
-
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (!accounts || accounts.length === 0) {
-                throw new Error("No wallet account connected.");
-            }
-            const currentAddress = accounts[0];
 
             const productDetails = {
                 ...formData,
                 warrantyStart: start,
-                warrantyEnd: end,
-                history: [{
-                    ownerName: formData.ownerName,
-                    ownerContact: formData.ownerContact,
-                    ownerAddress: currentAddress,
-                    transferDate: start
-                }]
+                warrantyEnd: end
             };
 
-            await registerProduct(contract, productDetails);
-            
-            // --- DATA PERSISTENCE FALLBACK ---
-            localStorage.setItem(`product_${productDetails.id}`, JSON.stringify(productDetails));
-            
+            // Process transaction through our professional hook
+            await execute(
+                registerProduct(contract, productDetails), 
+                {
+                    action: "Registered",
+                    productName: formData.name,
+                    productId: formData.id,
+                    ownerName: formData.ownerName,
+                    walletAddress: account
+                }
+            );
+
             setShowBurst(true);
-            setTimeout(() => {
-                setSuccess(true);
-                setShowBurst(false);
-                setLoading(false); // ✅ Fixed: was missing on success path
-            }, 800);
+            setTimeout(() => setShowBurst(false), 2000);
+            
         } catch (error) {
-            console.error(error);
-            setErrorMsg(error.reason || error.message || "Registration failed. Ensure wallet is connected.");
-            setLoading(false);
+            console.error("Registration flow failed:", error);
+        }
+    };
+
+    const handleReset = () => {
+        reset();
+        if (stage === 'success') {
+            setFormData({
+                id: "", name: "", warrantyStart: "", warrantyEnd: "", ownerName: "", ownerContact: ""
+            });
         }
     };
 
     return (
         <div className="pt-24 pb-12 px-6 max-w-4xl mx-auto relative">
             <BackToDashboardButton />
+            
+            <TransactionModal 
+                stage={stage}
+                status={status}
+                error={error}
+                txHash={txHash}
+                metadata={metadata}
+                onClose={handleReset}
+            />
 
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -99,46 +103,10 @@ const Register = () => {
             >
                 <GlassCard>
                     <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-6 text-center">
-                        Register New Product
+                        Register Your Product Warranty
                     </h2>
 
-                    {!success && errorMsg && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex items-start gap-3 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm mb-4"
-                        >
-                            <AlertCircle size={18} className="shrink-0 mt-0.5" />
-                            <span>{errorMsg}</span>
-                        </motion.div>
-                    )}
-
-                    {success ? (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-center py-12"
-                        >
-                            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 mb-6">
-                                <CheckCircle size={40} />
-                            </div>
-                            <h3 className="text-2xl font-bold text-white mb-2">Registration Successful!</h3>
-                            <p className="text-slate-400 mb-8">
-                                Product has been permanently recorded on the blockchain.
-                            </p>
-                            <AnimatedButton
-                                text="Register Another"
-                                onClick={() => {
-                                    setSuccess(false);
-                                    setFormData({
-                                        id: "", name: "", warrantyStart: "", warrantyEnd: "", ownerName: "", ownerContact: ""
-                                    });
-                                }}
-                                className="mx-auto"
-                            />
-                        </motion.div>
-                    ) : (
-                        <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl mx-auto mt-4">
+                    <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl mx-auto mt-4">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Product ID</label>
                                 <input
@@ -180,7 +148,7 @@ const Register = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Name</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Full Name</label>
                                 <input
                                     name="ownerName" required
                                     value={formData.ownerName}
@@ -200,18 +168,25 @@ const Register = () => {
                                 />
                             </div>
 
-                            <div className="relative pt-6">
-                                <ParticleBurst trigger={showBurst} />
-                                <AnimatedButton
-                                    text={loading ? "Registering Product..." : "Register Product"}
-                                    disabled={loading}
-                                    icon={Plus}
-                                    className="w-full py-4 text-lg bg-slate-900"
-                                />
-                            </div>
+                                {!isConnected ? (
+                                    <AnimatedButton
+                                        text="Connect Wallet to Register"
+                                        onClick={(e) => { e.preventDefault(); connectWallet(); }}
+                                        icon={AlertCircle}
+                                        className="w-full py-4 text-lg bg-blue-600 hover:bg-blue-500 text-white font-bold"
+                                        type="button"
+                                    />
+                                ) : (
+                                    <AnimatedButton
+                                        text={stage === 'processing' ? "Broadcasting..." : stage === 'waiting' ? "Awaiting Wallet..." : "Register Warranty"}
+                                        disabled={stage !== 'idle'}
+                                        icon={Plus}
+                                        className={`w-full py-4 text-lg ${stage !== 'idle' ? 'bg-slate-700 cursor-not-allowed' : 'bg-slate-900 border-indigo-500/50 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all'}`}
+                                        type="submit"
+                                    />
+                                )}
                         </form>
-                    )}
-                </GlassCard>
+                    </GlassCard>
             </motion.div>
         </div>
     );

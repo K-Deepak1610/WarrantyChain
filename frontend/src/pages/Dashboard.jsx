@@ -3,8 +3,8 @@ import DashboardCard from '../components/DashboardCard';
 import BackToHomeButton from '../components/BackToHomeButton';
 import { PlusCircle, CheckCircle, Shield, RefreshCw, Wifi, Database, Copy, Check, TrendingUp, Package } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
-import { shortenAddress } from '../utils/blockchain';
-import HexProductCard from '../components/HexProductCard';
+import { shortenAddress, getAllProducts } from '../utils/blockchain';
+import ProductCard from '../components/ProductCard';
 import { useState, useEffect, useMemo } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -31,22 +31,23 @@ const StatCard = ({ label, value, icon: Icon, color, sub }) => {
 
 const Dashboard = () => {
     usePageTitle('Dashboard');
-    const { isConnected, account } = useWallet();
+    const { isConnected, account, contract } = useWallet();
     const [products, setProducts] = useState([]);
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        const loaded = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('product_')) {
+        const fetchProducts = async () => {
+            if (contract && isConnected) {
                 try {
-                    loaded.push(JSON.parse(localStorage.getItem(key)));
-                } catch (e) {}
+                    const data = await getAllProducts(contract);
+                    setProducts(data);
+                } catch (err) {
+                    console.error("Failed to load products from blockchain", err);
+                }
             }
-        }
-        setProducts(loaded);
-    }, []);
+        };
+        fetchProducts();
+    }, [contract, isConnected]);
 
     const handleCopyAddress = () => {
         if (account) {
@@ -111,11 +112,11 @@ const Dashboard = () => {
                             )}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
                                 <TrendingUp size={14} />
-                                <span>Hardhat Localhost</span>
+                                <span>Ganache Local</span>
                             </div>
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
                                 <Package size={14} />
-                                <span>Contract Active</span>
+                                <span>Persistence Active</span>
                             </div>
                         </div>
                     </div>
@@ -126,7 +127,7 @@ const Dashboard = () => {
                     <StatCard label="Registered" value={products.length} icon={Database} color="cyan" sub="total products" />
                     <StatCard label="Active" value={activeProducts.length} icon={CheckCircle} color="emerald" sub="valid warranties" />
                     <StatCard label="Expired" value={products.length - activeProducts.length} icon={Shield} color="orange" sub="past warranty" />
-                    <StatCard label="Network" value="Local" icon={Wifi} color="purple" sub="Hardhat node" />
+                    <StatCard label="Network" value="Ganache" icon={Wifi} color="purple" sub="Local Workspace" />
                 </div>
 
                 {/* ─── Feature Cards ────────────────────────── */}
@@ -137,8 +138,8 @@ const Dashboard = () => {
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         <DashboardCard title="Register" icon={PlusCircle} to="/register" color="blue" />
-                        <DashboardCard title="Verify Product" icon={CheckCircle} to="/verify-warranty" color="green" />
-                        <DashboardCard title="Check Owner" icon={Shield} to="/verify-ownership" color="purple" />
+                        <DashboardCard title="Verify Warranty" icon={CheckCircle} to="/verify-warranty" color="green" />
+                        <DashboardCard title="Verify Ownership" icon={Shield} to="/verify-ownership" color="purple" />
                         <DashboardCard title="Transfer" icon={RefreshCw} to="/transfer-ownership" color="orange" />
                     </div>
                 </div>
@@ -158,8 +159,8 @@ const Dashboard = () => {
                     {products.length === 0 ? (
                         <div className="text-center p-16 glass-card rounded-2xl border-white/5 flex flex-col items-center">
                             <Database size={40} className="text-slate-700 mb-4" />
-                            <p className="text-slate-500 text-sm">No assets detected in current environment.</p>
-                            <p className="text-slate-600 text-xs mt-1">Register your first product to see it here.</p>
+                            <p className="text-slate-500 text-sm">Blockchain indexing required for gallery view.</p>
+                            <p className="text-slate-600 text-xs mt-1">Please use the Verify feature to query specific products by ID.</p>
                         </div>
                     ) : (
                         <motion.div
@@ -168,10 +169,10 @@ const Dashboard = () => {
                             variants={{
                                 visible: { transition: { staggerChildren: 0.08 } }
                             }}
-                            className="flex flex-wrap gap-8 justify-center lg:justify-start"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 w-full"
                         >
                             {products.map(p => (
-                                <HexProductCard key={p.id} product={p} />
+                                <ProductCard key={p.id} product={p} />
                             ))}
                         </motion.div>
                     )}

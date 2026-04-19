@@ -16,9 +16,15 @@ const QRCodeDisplay = ({ value, title = "Product QR Code" }) => {
                     includeMargin={true}
                 />
             </div>
-            <p className="text-[10px] text-center text-slate-500 font-mono tracking-widest break-all bg-black/30 w-full p-2 rounded-lg">
-                {value}
-            </p>
+            
+            <div className="text-center space-y-1">
+                <p className="text-[11px] text-cyan-400 font-bold uppercase tracking-[0.2em] animate-pulse">
+                    Scan for Global Verification
+                </p>
+                <p className="text-[9px] text-slate-500 font-medium uppercase tracking-widest">
+                    Live Demo Mode Active
+                </p>
+            </div>
         </GlassCard>
     );
 };

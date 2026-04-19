@@ -41,7 +41,7 @@ const Navbar = ({ setShowCommandPalette }) => {
     };
 
     const publicNavLinks = [
-        { to: '/verify-warranty', label: 'Verify', icon: CheckCircle },
+        { to: '/verify-warranty', label: 'Verify Warranty', icon: CheckCircle },
         { to: '/verify-ownership', label: 'Ownership', icon: Search },
     ];
 

@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import { Download, CheckCircle, Shield, Award, Calendar, User, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QRCodeDisplay from './QRCodeDisplay';
+import { getBaseURL, getVerifyPageURL } from '../config';
 
 const DownloadCertificate = ({ data, type = 'warranty' }) => {
     const certificateRef = useRef(null);
@@ -202,12 +203,7 @@ const DownloadCertificate = ({ data, type = 'warranty' }) => {
 
                             <div className="bg-white p-4 rounded-xl shadow-2xl">
                                 <QRCodeDisplay
-                                    value={JSON.stringify({
-                                        type: 'verification',
-                                        productId: data.productId,
-                                        contract: data.contractAddress,
-                                        timestamp: Date.now()
-                                    })}
+                                    value={`${getVerifyPageURL()}?name=${encodeURIComponent(data.productName)}&id=${encodeURIComponent(data.productId)}&owner=${encodeURIComponent(data.ownerName)}&status=${data.isValid ? 'Active' : 'Expired'}&valid=${encodeURIComponent(data.warrantyEnd ? new Date(data.warrantyEnd * 1000).toLocaleDateString() : 'N/A')}`}
                                     size={180}
                                     title="" // No title inside the PDF generation component's QR
                                 />

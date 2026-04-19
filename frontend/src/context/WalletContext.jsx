@@ -7,6 +7,16 @@ const WalletContext = createContext();
 
 export const useWallet = () => useContext(WalletContext);
 
+let globalBrowserProvider = null;
+
+const getBrowserProvider = (ethProvider) => {
+    if (!globalBrowserProvider) {
+        globalBrowserProvider = new ethers.BrowserProvider(ethProvider, "any");
+        globalBrowserProvider.pollingInterval = 15000; // Throttle block polling to 15s to prevent RPC -32002 errors
+    }
+    return globalBrowserProvider;
+};
+
 export const WalletProvider = ({ children }) => {
     const [account, setAccount] = useState("");
     const [contract, setContract] = useState(null);
@@ -14,79 +24,104 @@ export const WalletProvider = ({ children }) => {
     const [signer, setSigner] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    // Initialize read-only provider and contract on mount
-    useEffect(() => {
-        const initializeReadOnly = async () => {
-            try {
-                // Hardhat local node default URL
-                const readOnlyProvider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-                const readOnlyContract = new ethers.Contract(
-                    ContractAddress.Warranty,
-                    WarrantyArtifact.abi,
-                    readOnlyProvider
-                );
-                setProvider(readOnlyProvider);
-                setContract(readOnlyContract);
-                console.log("Read-only contract initialized");
-            } catch (error) {
-                console.error("Error initializing read-only provider:", error);
-            }
-        };
-
-        initializeReadOnly();
-    }, []);
-
-    // Event listeners for MetaMask
-    useEffect(() => {
-        let ethProvider = window.ethereum;
-        if (ethProvider?.providers) {
-            ethProvider = ethProvider.providers.find(p => p.isMetaMask) || ethProvider.providers[0];
-        }
-
-        if (ethProvider) {
-            ethProvider.on('accountsChanged', (accounts) => {
-                if (accounts.length > 0) {
-                    setAccount(accounts[0]);
-                    initializeEthers(accounts[0]);
-                } else {
-                    disconnectWallet();
-                }
-            });
-
-            ethProvider.on('chainChanged', () => {
-                window.location.reload();
-            });
-        }
-    }, []);
-
-    const initializeEthers = React.useCallback(async (currentAccount) => {
+    const switchToGanache = async (ethProvider) => {
+        const GANACHE_CHAIN_ID = '0x539'; // 1337
         try {
+            await ethProvider.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: GANACHE_CHAIN_ID }],
+            });
+            return true;
+        } catch (switchError) {
+            // This error code indicates that the chain has not been added to MetaMask.
+            if (switchError.code === 4902) {
+                try {
+                    await ethProvider.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                             chainId: GANACHE_CHAIN_ID,
+                             chainName: 'Ganache Local',
+                             nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                             rpcUrls: ['http://127.0.0.1:7545']
+                        }],
+                    });
+                    return true;
+                } catch (addError) {
+                    console.error("Error adding Ganache network:", addError);
+                    return false;
+                }
+            }
+            console.error("Error switching network:", switchError);
+            return false;
+        }
+    };
+
+    // Initialize provider and contract on mount via MetaMask (read-only mode)
+    useEffect(() => {
+        const init = async () => {
             let ethProvider = window.ethereum;
             if (ethProvider?.providers) {
                 ethProvider = ethProvider.providers.find(p => p.isMetaMask) || ethProvider.providers[0];
             }
-            
-            if (!ethProvider) {
-                console.warn("No ethereum provider found");
-                return;
+
+            if (ethProvider) {
+                const browserProvider = getBrowserProvider(ethProvider);
+                setProvider(browserProvider);
+                
+                const readOnlyContract = new ethers.Contract(
+                    ContractAddress.Warranty,
+                    WarrantyArtifact.abi,
+                    browserProvider
+                );
+                setContract(readOnlyContract);
+                
+                // Check if already connected
+                const accounts = await ethProvider.request({ method: 'eth_accounts' });
+                if (accounts.length > 0) {
+                    setAccount(accounts[0]);
+                    await attachSigner(accounts[0], browserProvider);
+                }
+
+                // Listeners
+                const handleAccountsChanged = async (newAccounts) => {
+                    if (newAccounts.length > 0) {
+                        setAccount(newAccounts[0]);
+                        await attachSigner(newAccounts[0], browserProvider);
+                    } else {
+                        setAccount("");
+                        setSigner(null);
+                    }
+                };
+
+                const handleChainChanged = () => window.location.reload();
+
+                ethProvider.on('accountsChanged', handleAccountsChanged);
+                ethProvider.on('chainChanged', handleChainChanged);
+
+                return () => {
+                    ethProvider.removeListener('accountsChanged', handleAccountsChanged);
+                    ethProvider.removeListener('chainChanged', handleChainChanged);
+                };
             }
+        };
+        init();
+    }, []);
 
-            const provider = new ethers.BrowserProvider(ethProvider);
-            setProvider(provider);
-
-            const signer = await provider.getSigner();
-            setSigner(signer);
-
-            const contract = new ethers.Contract(
+    const attachSigner = async (currentAccount, activeProvider) => {
+        try {
+            const currentSigner = await activeProvider.getSigner();
+            setSigner(currentSigner);
+            
+            const signedContract = new ethers.Contract(
                 ContractAddress.Warranty,
                 WarrantyArtifact.abi,
-                signer
+                currentSigner
             );
-            setContract(contract);
+            setContract(signedContract);
         } catch (error) {
-            console.error("Error initializing ethers:", error);
+            console.error("Error attaching signer:", error);
         }
-    }, []);
+    };
 
     const connectWallet = async () => {
         let ethProvider = window.ethereum;
@@ -95,18 +130,28 @@ export const WalletProvider = ({ children }) => {
         }
 
         if (!ethProvider) {
-            alert("Wallet object not found. Please refresh the page if you just installed MetaMask.");
+            alert("MetaMask not found. Please install it to use this app.");
             return;
         }
 
         try {
             setLoading(true);
+
+            // Force switch to Ganache first
+            const chainId = await ethProvider.request({ method: 'eth_chainId' });
+            if (chainId !== '0x539') {
+                const switched = await switchToGanache(ethProvider);
+                if (!switched) throw new Error("Please switch to Ganache Local network.");
+            }
+
             const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
-            const account = accounts[0];
-            setAccount(account);
-            initializeEthers(account);
+            setAccount(accounts[0]);
+            
+            const browserProvider = getBrowserProvider(ethProvider);
+            await attachSigner(accounts[0], browserProvider);
         } catch (error) {
-            console.error("Error connecting wallet:", error);
+            console.error("Connection error:", error);
+            alert(error.message || "Failed to connect wallet.");
         } finally {
             setLoading(false);
         }
@@ -115,18 +160,16 @@ export const WalletProvider = ({ children }) => {
     const disconnectWallet = async () => {
         setAccount("");
         setSigner(null);
-        // Re-initialize read-only state
-        try {
-            const readOnlyProvider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+        let ethProvider = window.ethereum;
+        if (ethProvider) {
+            const browserProvider = getBrowserProvider(ethProvider);
+            setProvider(browserProvider);
             const readOnlyContract = new ethers.Contract(
                 ContractAddress.Warranty,
                 WarrantyArtifact.abi,
-                readOnlyProvider
+                browserProvider
             );
-            setProvider(readOnlyProvider);
             setContract(readOnlyContract);
-        } catch (error) {
-            console.error("Error re-initializing read-only provider:", error);
         }
     };
 

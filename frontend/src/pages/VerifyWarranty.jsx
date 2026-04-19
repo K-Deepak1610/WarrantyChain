@@ -8,13 +8,14 @@ import QRScanner from '../components/QRScanner';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 import DownloadCertificate from '../components/DownloadCertificate';
 import HashDisplay from '../components/HashDisplay';
-import { verifyWarranty, getFallbackProduct } from '../utils/blockchain';
+import { verifyWarranty, shortenAddress } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
 import WarrantyArtifact from '../contracts/Warranty.json';
 import { Search, CheckCircle, XCircle, QrCode, User, Calendar, Clock, Download, Settings, RefreshCcw, Cpu } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { getBaseURL, getVerifyPageURL } from '../config';
 
 const VerifyWarranty = () => {
     usePageTitle('Verify Warranty');
@@ -22,7 +23,6 @@ const VerifyWarranty = () => {
     const [productId, setProductId] = useState("");
     const [result, setResult] = useState(null);
     const [error, setError] = useState("");
-    const [autoDownload, setAutoDownload] = useState(false);
     
     // State Machine: 'IDLE' | 'SCANNING' | 'VALIDATING' | 'RESULT'
     const [step, setStep] = useState('IDLE');
@@ -84,25 +84,9 @@ const VerifyWarranty = () => {
 
             const data = await verifyWarranty(activeContract, targetId);
             setResult(data);
-            
-            // Auto download
-            if (autoDownload && data.isValid) {
-                setTimeout(() => {
-                    generateCertificate({
-                        ...data,
-                        productId: targetId,
-                        contractAddress: ContractAddress.Warranty
-                    });
-                }, 1000);
-            }
         } catch (err) {
-            console.warn("Blockchain read failed. Checking local backup...");
-            const fallbackData = getFallbackProduct(targetId);
-            if (fallbackData) {
-                setResult(fallbackData);
-            } else {
-                setError("Product not found on blockchain or local backup.");
-            }
+            console.warn("Blockchain read failed.", err);
+            setError("Product not found on the blockchain.");
         } finally {
             setStep('RESULT');
         }
@@ -166,8 +150,8 @@ const VerifyWarranty = () => {
                             exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
                             className="flex flex-col h-full flex-1"
                         >
-                            <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent mb-8 text-center pt-4">
-                                Verify Warranty
+                            <h2 className="text-3xl font-black bg-gradient-to-r from-emerald-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent mb-8 text-center pt-4 tracking-tight">
+                                Verify Product Warranty
                             </h2>
 
                             <form onSubmit={handleVerifySubmit} className="flex-1 flex flex-col justify-center gap-6">
@@ -189,26 +173,12 @@ const VerifyWarranty = () => {
                                 </div>
 
                                 <AnimatedButton
-                                    text="Initiate Verification"
+                                    text="Verify Now"
                                     onClick={handleVerifySubmit}
                                     icon={Search}
                                     className="w-full py-4 text-lg bg-slate-900"
                                 />
                             </form>
-
-                            <div className="mt-8 flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
-                                <div className="flex items-center gap-2 text-slate-300">
-                                    <Settings size={18} className="text-cyan-400" />
-                                    <span className="text-sm font-medium">Auto-Download PDF</span>
-                                </div>
-                                <button
-                                    onClick={() => setAutoDownload(!autoDownload)}
-                                    className={`relative h-6 w-11 rounded-full transition-colors focus:outline-none 
-                                    ${autoDownload ? 'bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'bg-slate-700'}`}
-                                >
-                                    <span className={`${autoDownload ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform mt-1`} />
-                                </button>
-                            </div>
                         </motion.div>
                     )}
 
@@ -258,31 +228,43 @@ const VerifyWarranty = () => {
                                 <div className="space-y-6">
                                     <StatusBadge isValid={result.isValid} days={result.daysRemaining} />
 
-                                    <div className="bg-white/5 rounded-3xl p-6 border border-white/10 space-y-4 backdrop-blur-md">
-                                        <h3 className="text-xl font-bold text-white border-b border-white/10 pb-2 mb-4">Product Payload</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <p className="text-slate-500 text-xs font-mono mb-1 tracking-wider uppercase">Designation</p>
-                                                <p className="text-cyan-50 font-medium text-lg">{result.productName}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-slate-500 text-xs font-mono mb-1 tracking-wider uppercase">Token ID</p>
-                                                <p className="text-cyan-400 font-mono text-sm break-all">{productId}</p>
+                                    <div className="bg-slate-950/40 rounded-3xl p-6 border border-white/5 space-y-4 backdrop-blur-md relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                                            <ShieldCheck size={100} />
+                                        </div>
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                                <Cpu size={20} className="text-cyan-400" />
+                                                Registry Details
+                                            </h3>
+                                            <div className="flex items-center gap-1 text-[10px] font-black text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 rounded-md uppercase tracking-tighter">
+                                                <Settings size={10} className="animate-[spin_4s_linear_infinite]" />
+                                                Blockchain Verified
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                                            <div>
+                                                <p className="text-slate-500 text-[10px] font-black mb-1 tracking-widest uppercase">Product Manifest</p>
+                                                <p className="text-white font-bold text-xl drop-shadow-sm">{result.productName}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-500 text-[10px] font-black mb-1 tracking-widest uppercase">Digital Identifier</p>
+                                                <p className="text-cyan-400 font-mono text-sm break-all bg-black/30 p-2 rounded-lg border border-white/5">{productId}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/5 relative z-10">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-emerald-500/10"><Calendar className="text-emerald-400" size={16} /></div>
+                                                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20"><Calendar className="text-emerald-400" size={18} /></div>
                                                 <div>
-                                                    <p className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Minted</p>
-                                                    <p className="text-slate-200 text-xs font-mono">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</p>
+                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Activation</p>
+                                                    <p className="text-slate-100 text-sm font-mono">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-red-500/10"><Clock className="text-red-400" size={16} /></div>
+                                                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20"><Clock className="text-red-400" size={18} /></div>
                                                 <div>
-                                                    <p className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Expires</p>
-                                                    <p className="text-slate-200 text-xs font-mono">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</p>
+                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Expiration</p>
+                                                    <p className="text-slate-100 text-sm font-mono">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -297,23 +279,21 @@ const VerifyWarranty = () => {
                                                 <span className="text-slate-500">Identity</span>
                                                 <span className="text-slate-200">{result.ownerName}</span>
                                             </div>
-                                            <div className="flex justify-between border-b mx-4 border-white/5 pb-2">
-                                                <span className="text-slate-500">Contact</span>
-                                                <span className="text-slate-200">{result.ownerContact}</span>
-                                            </div>
                                             <div className="pt-2 mx-4">
                                                 <HashDisplay 
                                                     label="Wallet Hash" 
-                                                    value={result.ownerAddress} 
-                                                    isBackup={result.isFallback}
+                                                    value={shortenAddress(result.ownerAddress)} 
+                                                    isBackup={false}
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="pt-4 flex flex-col items-center gap-6">
                                         <div className="p-4 bg-white/5 rounded-[2rem] border border-white/10 shadow-2xl shadow-cyan-900/20">
-                                            <QRCodeDisplay value={`${window.location.origin}/verify/${productId}`} title="" />
+                                            <QRCodeDisplay 
+                                                value={`${getVerifyPageURL()}?name=${encodeURIComponent(result.productName)}&id=${encodeURIComponent(productId)}&owner=${encodeURIComponent(result.ownerName)}&status=${result.isValid ? 'Active' : 'Expired'}&valid=${encodeURIComponent(new Date(result.warrantyEnd * 1000).toLocaleDateString())}`} 
+                                                title="" 
+                                            />
                                         </div>
 
                                         <div className="w-full grid grid-cols-2 gap-4">
@@ -339,9 +319,8 @@ const VerifyWarranty = () => {
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            )}
-                        </motion.div>
+                                )}
+                            </motion.div>
                     )}
                 </AnimatePresence>
             </GlassCard>

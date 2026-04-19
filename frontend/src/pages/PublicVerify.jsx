@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import GlassCard from '../components/GlassCard';
 import AnimatedButton from '../components/AnimatedButton';
 import HashDisplay from '../components/HashDisplay';
-import { verifyWarranty, verifyOwnership, getFallbackProduct } from '../utils/blockchain';
+import { verifyWarranty, verifyOwnership, shortenAddress } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
@@ -23,6 +23,8 @@ import {
     Loader2
 } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { getBaseURL, CONFIG } from '../config';
+import WarrantyArtifact from '../contracts/Warranty.json';
 
 const PublicVerify = () => {
     usePageTitle('Product Verification');
@@ -32,19 +34,47 @@ const PublicVerify = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        if (contract && productId) {
-            fetchData();
+    // Read-only fallback for Guest/Mobile scans
+    const getReadOnlyContract = async () => {
+        try {
+            // Check for MetaMask/Ethereum provider first
+            if (window.ethereum) {
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                return new ethers.Contract(ContractAddress.Warranty, WarrantyArtifact.abi, provider);
+            } else {
+                // Public RPC fallback for guests scanning via mobile
+                const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+                return new ethers.Contract(ContractAddress.Warranty, WarrantyArtifact.abi, provider);
+            }
+        } catch (e) {
+            console.warn("Read-only provider failed", e);
         }
+        return null;
+    };
+
+    useEffect(() => {
+        const init = async () => {
+            await fetchData();
+        };
+        init();
     }, [contract, productId]);
 
     const fetchData = async () => {
         setLoading(true);
         setError("");
         try {
+            let activeContract = contract;
+            if (!activeContract) {
+                activeContract = await getReadOnlyContract();
+            }
+
+            if (!activeContract) {
+                throw new Error("Unable to connect to blockchain node.");
+            }
+
             const [warrantyData, ownershipData] = await Promise.all([
-                verifyWarranty(contract, productId),
-                verifyOwnership(contract, productId).catch(() => ({}))
+                verifyWarranty(activeContract, productId),
+                verifyOwnership(activeContract, productId).catch(() => ({}))
             ]);
 
             setResult({
@@ -53,16 +83,8 @@ const PublicVerify = () => {
                 productId
             });
         } catch (err) {
-            console.warn("Blockchain read failed. Checking local backup...");
-            const fallbackData = getFallbackProduct(productId);
-            if (fallbackData) {
-                setResult({
-                    ...fallbackData,
-                    history: fallbackData.history || []
-                });
-            } else {
-                setError("The product with this ID could not be found on the blockchain or local backup.");
-            }
+            console.warn("Blockchain read failed:", err);
+            setError("The product with this ID could not be found on the blockchain.");
         } finally {
             setLoading(false);
         }
@@ -142,15 +164,11 @@ const PublicVerify = () => {
                                                 <span className="text-slate-400">Legal Owner</span>
                                                 <span className="text-white font-bold">{result.ownerName}</span>
                                             </div>
-                                            <div className="flex justify-between items-center text-sm">
-                                                <span className="text-slate-400">Contact Ref</span>
-                                                <span className="text-white">{result.ownerContact}</span>
-                                            </div>
                                             <div className="pt-4">
                                                 <HashDisplay 
                                                     label="Blockchain Address" 
-                                                    value={result.ownerAddress} 
-                                                    isBackup={result.isFallback} 
+                                                    value={shortenAddress(result.ownerAddress)} 
+                                                    isBackup={false} 
                                                 />
                                             </div>
                                         </div>
@@ -220,7 +238,7 @@ const PublicVerify = () => {
                                                     <span className="text-white font-bold text-sm">{record.ownerName}</span>
                                                 </div>
                                                 <div className="mb-3">
-                                                    <HashDisplay value={record.ownerAddress} isBackup={result.isFallback} />
+                                                    <HashDisplay value={record.ownerAddress} isBackup={false} />
                                                 </div>
                                                 <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">{new Date(record.transferDate * 1000).toLocaleDateString()}</p>
                                                 {i === result.history.length - 1 && (
@@ -235,12 +253,12 @@ const PublicVerify = () => {
                             <footer className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 font-medium">
                                 <div className="flex items-center gap-4">
                                     <div className="flex flex-col">
-                                        <span className="uppercase tracking-widest">Contract</span>
-                                        <span className="font-mono text-slate-400 uppercase">{ContractAddress.Warranty}</span>
+                                        <span className="uppercase tracking-widest">Verification</span>
+                                        <span className="font-mono text-slate-400 uppercase">Decentralized Ledger</span>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="uppercase tracking-widest">Network</span>
-                                        <span className="text-slate-400">HARDHAT LOCALHOST</span>
+                                        <span className="uppercase tracking-widest">Protocol</span>
+                                        <span className="text-slate-400">WarrantyChain Core</span>
                                     </div>
                                 </div>
                                 <div className="text-center md:text-right">

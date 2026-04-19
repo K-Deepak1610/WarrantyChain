@@ -7,12 +7,13 @@ import QRScanner from '../components/QRScanner';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 import DownloadCertificate from '../components/DownloadCertificate';
 import HashDisplay from '../components/HashDisplay';
-import { verifyOwnership, verifyWarranty } from '../utils/blockchain';
+import { verifyOwnership, verifyWarranty, shortenAddress } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
 import { Search, UserCheck, History, QrCode, Download, Settings, ShieldCheck, ShieldAlert, ShieldX, Check, X, ArrowRight, UserX, Crown } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { getBaseURL, getVerifyPageURL } from '../config';
 
 const VerifyOwnership = () => {
     usePageTitle('Verify Ownership');
@@ -22,38 +23,14 @@ const VerifyOwnership = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showScanner, setShowScanner] = useState(false);
-    const [autoDownload, setAutoDownload] = useState(false);
 
     const executeVerify = async (targetId) => {
         setLoading(true);
         setError("");
         setResult(null);
 
-        // If no contract (no wallet connected), go straight to localStorage fallback
         if (!contract) {
-            const backup = localStorage.getItem(`product_${targetId}`);
-            if (backup) {
-                try {
-                    const parsed = JSON.parse(backup);
-                    const history = parsed.history && parsed.history.length > 0 ? parsed.history : [{
-                        ownerName: parsed.ownerName,
-                        ownerContact: parsed.ownerContact,
-                        ownerAddress: parsed.ownerAddress || null,
-                        transferDate: parsed.warrantyStart
-                    }];
-                    setResult({
-                        ...parsed,
-                        productId: parsed.id,
-                        productName: parsed.name,
-                        history: history,
-                        isFallback: true
-                    });
-                } catch (e) {
-                    setError("Product not found. Connect wallet for live verification.");
-                }
-            } else {
-                setError("No wallet connected and product not in local cache.");
-            }
+            setError("No wallet connected. Please connect wallet for live verification.");
             setLoading(false);
             return;
         }
@@ -69,40 +46,10 @@ const VerifyOwnership = () => {
                 ...warrantyData,
                 productId: targetId,
                 productName: warrantyData?.productName || "Unknown Product",
-                isFallback: false
             });
-
-            if (autoDownload) {
-                setTimeout(() => {
-                    generateCertificate({
-                        ...ownershipData,
-                        ...warrantyData,
-                        productId: targetId,
-                        contractAddress: ContractAddress.Warranty
-                    });
-                }, 1000);
-            }
         } catch (err) {
-            console.warn("Blockchain read failed. Checking local backup...");
-            const backup = localStorage.getItem(`product_${targetId}`);
-            if (backup) {
-                const parsed = JSON.parse(backup);
-                const history = parsed.history && parsed.history.length > 0 ? parsed.history : [{
-                    ownerName: parsed.ownerName,
-                    ownerContact: parsed.ownerContact,
-                    ownerAddress: parsed.ownerAddress || parsed.owner || parsed.currentOwner || null,
-                    transferDate: parsed.warrantyStart
-                }];
-                setResult({
-                    ...parsed,
-                    productId: parsed.id,
-                    productName: parsed.name,
-                    history: history,
-                    isFallback: true
-                });
-            } else {
-                setError("Product not found on blockchain or local backup.");
-            }
+            console.warn("Blockchain read failed: ", err);
+            setError("Product not found on the blockchain.");
         } finally {
             setLoading(false);
         }
@@ -123,24 +70,11 @@ const VerifyOwnership = () => {
 
     // Authenticity Signals
     const renderAuthenticitySection = (data) => {
-        const isOnChain = !data.isFallback;
-        const ownershipChainIntact = data.history && data.history.length > 0;
-        const registrationBlockExists = data.history && data.history.length > 0 && !!data.history[0].transferDate;
-        const warrantyNotExpired = data.warrantyEnd ? (data.warrantyEnd * 1000 > Date.now()) : false;
+        const connectedAddress = window.ethereum?.selectedAddress?.toLowerCase() || "";
+        const ownerAddress = data.ownerAddress?.toLowerCase() || "";
+        const isOwner = connectedAddress && connectedAddress === ownerAddress;
 
-        let verdict = 'FAKE';
-        if (ownershipChainIntact && registrationBlockExists) {
-            verdict = isOnChain ? 'ORIGINAL' : 'CACHED';
-        }
-
-        const SignalRow = ({ label, passed }) => (
-            <div className={`flex items-center gap-2 text-xs font-mono uppercase tracking-wider ${passed ? 'text-emerald-400/80' : 'text-red-400/80'}`}>
-                {passed ? <Check size={14} /> : <X size={14} />}
-                <span>{label}</span>
-            </div>
-        );
-
-        if (verdict === 'ORIGINAL') {
+        if (isOwner) {
             return (
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-6 items-center shadow-[0_0_30px_rgba(16,185,129,0.1)]">
                     <div className="p-4 bg-emerald-500/20 rounded-full animate-pulse border border-emerald-500/50 relative">
@@ -148,40 +82,8 @@ const VerifyOwnership = () => {
                         <ShieldCheck size={36} className="text-emerald-400 relative z-10" />
                     </div>
                     <div className="flex-1 text-center md:text-left">
-                        <h3 className="text-emerald-400 font-bold font-mono tracking-widest text-lg mb-1">VERIFIED ORIGINAL</h3>
-                        <p className="text-emerald-400/70 text-sm mb-4">Product authenticated on-chain. Ownership chain intact.</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            <SignalRow label="On-Chain Source" passed={isOnChain} />
-                            <SignalRow label="Ownership Chain" passed={ownershipChainIntact} />
-                            <SignalRow label="Registration Block" passed={registrationBlockExists} />
-                            <SignalRow label="Warranty Status" passed={warrantyNotExpired} />
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        if (verdict === 'CACHED') {
-            return (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-6 items-center shadow-[0_0_30px_rgba(245,158,11,0.1)]">
-                    <div className="p-4 bg-amber-500/20 rounded-full border border-amber-500/50">
-                        <ShieldAlert size={36} className="text-amber-400" />
-                    </div>
-                    <div className="flex-1 text-center md:text-left">
-                        <h3 className="text-amber-400 font-bold font-mono tracking-widest text-lg mb-1">CACHED DATA — UNVERIFIED LIVE</h3>
-                        <p className="text-amber-400/70 text-sm mb-4">Data loaded from local cache. Reconnect wallet to verify on-chain.</p>
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                            <SignalRow label="On-Chain Source" passed={isOnChain} />
-                            <SignalRow label="Ownership Chain" passed={ownershipChainIntact} />
-                            <SignalRow label="Registration Block" passed={registrationBlockExists} />
-                            <SignalRow label="Warranty Status" passed={warrantyNotExpired} />
-                        </div>
-                        <button 
-                            onClick={connectWallet}
-                            className="bg-amber-950/50 hover:bg-amber-900/50 border border-amber-500/50 text-amber-400 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
-                        >
-                            Verify Live Now
-                        </button>
+                        <h3 className="text-emerald-400 font-bold font-mono tracking-widest text-lg mb-1">Ownership Verified ✅</h3>
+                        <p className="text-emerald-400/70 text-sm mb-4">The connected wallet is the rightful owner of the product.</p>
                     </div>
                 </div>
             );
@@ -193,14 +95,8 @@ const VerifyOwnership = () => {
                     <ShieldX size={36} className="text-red-400" />
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-red-400 font-bold font-mono tracking-widest text-lg mb-1">⚠ AUTHENTICITY UNCONFIRMED</h3>
-                    <p className="text-red-400/70 text-sm mb-4">Ownership chain has gaps or registration data is missing.</p>
-                    <div className="grid grid-cols-2 gap-2">
-                        <SignalRow label="On-Chain Source" passed={isOnChain} />
-                        <SignalRow label="Ownership Chain" passed={ownershipChainIntact} />
-                        <SignalRow label="Registration Block" passed={registrationBlockExists} />
-                        <SignalRow label="Warranty Status" passed={warrantyNotExpired} />
-                    </div>
+                    <h3 className="text-red-400 font-bold font-mono tracking-widest text-lg mb-1">Ownership Not Verified ❌</h3>
+                    <p className="text-red-400/70 text-sm mb-4">The connected wallet does not match the registered owner.</p>
                 </div>
             </div>
         );
@@ -239,23 +135,6 @@ const VerifyOwnership = () => {
                         icon={Search}
                         className="bg-purple-600 hover:bg-purple-500"
                     />
-                </div>
-
-                <div className="flex items-center justify-between mb-8 max-w-xl mx-auto p-4 bg-white/5 rounded-xl border border-white/10">
-                    <div className="flex items-center gap-2 text-slate-300">
-                        <Settings size={18} className="text-purple-400" />
-                        <span className="text-sm font-medium">Auto-Download Certificate</span>
-                    </div>
-                    <button
-                        onClick={() => setAutoDownload(!autoDownload)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none 
-                        ${autoDownload ? 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-slate-700'}`}
-                    >
-                        <span
-                            className={`${autoDownload ? 'translate-x-6' : 'translate-x-1'}
-                            inline-block h-4 w-4 transform rounded-full bg-white transition-transform mt-1`}
-                        />
-                    </button>
                 </div>
 
                 {error && <div className="text-red-400 text-center mb-4 bg-red-900/20 border border-red-500/20 p-4 rounded-xl">{error}</div>}
@@ -353,7 +232,6 @@ const VerifyOwnership = () => {
                                                         <h3 className={`text-xl font-bold ${isCurrent ? 'text-emerald-400' : 'text-slate-300'}`}>
                                                             {record.ownerName}
                                                         </h3>
-                                                        <p className="text-sm text-slate-500 mt-1">{record.ownerContact}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-2">
@@ -387,8 +265,8 @@ const VerifyOwnership = () => {
                                                     {resolvedAddress ? (
                                                         <HashDisplay 
                                                             label="Wallet Identity" 
-                                                            value={resolvedAddress} 
-                                                            isBackup={result.isFallback}
+                                                            value={shortenAddress(resolvedAddress)} 
+                                                            isBackup={false}
                                                         />
                                                     ) : (
                                                         <div className="flex flex-col gap-1">
@@ -411,7 +289,10 @@ const VerifyOwnership = () => {
                         </motion.div>
 
                         <div className="pt-12 flex flex-col items-center gap-6 border-t border-white/5 mt-8">
-                            <QRCodeDisplay value={`${window.location.origin}/verify/${productId}`} title="Verification QR" />
+                            <QRCodeDisplay 
+                                value={`${getVerifyPageURL()}?name=${encodeURIComponent(result.productName)}&id=${encodeURIComponent(productId)}&owner=${encodeURIComponent(result.ownerName)}&status=${(result.warrantyEnd * 1000 > Date.now()) ? 'Active' : 'Expired'}&valid=${encodeURIComponent(new Date(result.warrantyEnd * 1000).toLocaleDateString())}`} 
+                                title="Verification QR" 
+                            />
                             <button
                                 onClick={() => generateCertificate({ ...result, productId, contractAddress: ContractAddress.Warranty })}
                                 className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95 mt-2"

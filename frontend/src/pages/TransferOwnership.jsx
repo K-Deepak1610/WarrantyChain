@@ -1,31 +1,64 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ethers } from 'ethers';
 import GlassCard from '../components/GlassCard';
 import AnimatedButton from '../components/AnimatedButton';
 import BackToDashboardButton from '../components/BackToDashboardButton';
 import ParticleBurst from '../components/ParticleBurst';
-import HashDisplay from '../components/HashDisplay';
-import { transferOwnership, verifyOwnership } from '../utils/blockchain';
+import { transferOwnership, verifyWarranty } from '../utils/blockchain';
 import { useWallet } from '../context/WalletContext';
-import { RefreshCw, ArrowRight, CheckCircle, AlertCircle, Wand2, Wallet, FileText } from 'lucide-react';
+import { RefreshCw, ArrowRight, Wallet, Wand2, Loader2, CheckCircle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useTransaction } from '../hooks/useTransaction';
+import TransactionModal from '../components/TransactionModal';
 
 const TransferOwnership = () => {
     usePageTitle('Transfer Ownership');
     const { contract } = useWallet();
+    const { stage, status, error, txHash, metadata, execute, reset } = useTransaction();
+    
     const [formData, setFormData] = useState({
         productId: "",
         newOwner: "",
-        newOwnerName: "",
-        newOwnerContact: ""
+        newOwnerName: ""
     });
-    const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState("idle"); // idle, processing, success, error
-    const [errorMsg, setErrorMsg] = useState("");
-    const [transferredDetails, setTransferredDetails] = useState(null);
-    const [txHash, setTxHash] = useState("");
+    const [productName, setProductName] = useState("");
+    const [isSearching, setIsSearching] = useState(false);
     const [showBurst, setShowBurst] = useState(false);
+
+    // Reliable lookup when ID changes
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const cleanedId = formData.productId?.trim();
+            if (cleanedId?.length > 2 && contract) {
+                lookupProductName(cleanedId);
+            } else {
+                setProductName("");
+            }
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [formData.productId, contract]);
+
+    const lookupProductName = async (id) => {
+        setIsSearching(true);
+        try {
+            const cleanId = id.trim();
+            // Use our specialized verify utility which we know is robust
+            const data = await verifyWarranty(contract, cleanId);
+            
+            if (data && data.productName && data.productName !== "") {
+                setProductName(data.productName);
+            } else {
+                setProductName("");
+            }
+        } catch (err) {
+            console.error("Lookup error:", err);
+            setProductName("");
+        } finally {
+            setIsSearching(false);
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -56,72 +89,53 @@ const TransferOwnership = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        const cleanId = formData.productId.trim();
         if (!contract) {
-            setStatus("error");
-            setErrorMsg("Smart contract not initialized. Please connect your wallet.");
+            alert("Smart contract not initialized. Please connect your wallet.");
             return;
         }
 
-        setLoading(true);
-        setStatus("processing");
-        setErrorMsg("");
-        setTxHash("");
-
         try {
-            const tx = await transferOwnership(
-                contract,
-                formData.productId,
-                formData.newOwner,
-                formData.newOwnerName,
-                formData.newOwnerContact
-            );
-            setTxHash(tx.hash);
-
-            // Wait a sec for propagation then fetch
-            setTimeout(async () => {
+            // Final safety check using the robust utility
+            let finalName = productName;
+            if (!finalName || finalName === "") {
                 try {
-                    const details = await verifyOwnership(contract, formData.productId);
-                    setTransferredDetails(details);
+                    const data = await verifyWarranty(contract, cleanId);
+                    finalName = data.productName;
                 } catch (err) {
-                    console.warn("Could not verify ownership after transfer, updating local backup...");
-                    const backup = localStorage.getItem(`product_${formData.productId}`);
-                    if (backup) {
-                        const parsed = JSON.parse(backup);
-                        const updated = {
-                            ...parsed,
-                            ownerName: formData.newOwnerName,
-                            ownerContact: formData.newOwnerContact,
-                            history: [
-                                ...(parsed.history || []),
-                                {
-                                    ownerName: formData.newOwnerName,
-                                    ownerContact: formData.newOwnerContact,
-                                    ownerAddress: formData.newOwner,
-                                    transferDate: Math.floor(Date.now() / 1000)
-                                }
-                            ]
-                        };
-                        localStorage.setItem(`product_${formData.productId}`, JSON.stringify(updated));
-                    }
-                    setTransferredDetails({
-                        ownerName: formData.newOwnerName,
-                        ownerContact: formData.newOwnerContact,
-                        ownerAddress: formData.newOwner
-                    });
+                    console.warn("Final name lookup failed", err);
                 }
-                
-                setShowBurst(true);
-                setTimeout(() => {
-                    setStatus("success");
-                    setShowBurst(false);
-                }, 800);
-            }, 2000);
+            }
+
+            await execute(
+                transferOwnership(
+                    contract,
+                    cleanId,
+                    formData.newOwner,
+                    formData.newOwnerName
+                ),
+                {
+                    action: "Transferred",
+                    productId: cleanId,
+                    productName: (finalName && finalName !== "") ? finalName : "Asset " + cleanId, 
+                    ownerName: formData.newOwnerName,
+                    walletAddress: formData.newOwner
+                }
+            );
+
+            setShowBurst(true);
+            setTimeout(() => setShowBurst(false), 2000);
 
         } catch (error) {
-            console.error(error);
-            setStatus("error");
-            setErrorMsg(error.reason || error.message || "Transfer failed. Ensure you are the owner.");
-            setLoading(false);
+            console.error("Transfer flow failed:", error);
+        }
+    };
+
+    const handleReset = () => {
+        reset();
+        if (stage === 'success') {
+            setFormData({ productId: "", newOwner: "", newOwnerName: "" });
+            setProductName("");
         }
     };
 
@@ -129,105 +143,76 @@ const TransferOwnership = () => {
         <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto relative">
             <BackToDashboardButton />
 
+            <TransactionModal 
+                stage={stage}
+                status={status}
+                error={error}
+                txHash={txHash}
+                metadata={metadata}
+                onClose={handleReset}
+            />
+
             <GlassCard>
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-yellow-500 bg-clip-text text-transparent mb-6 text-center">
                     Transfer Ownership
                 </h2>
 
-                {status === "success" ? (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="text-center py-6"
-                    >
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 mb-6 border border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                            <CheckCircle size={40} />
-                        </div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Ownership Transfer Successful</h3>
-                        <p className="text-slate-400 mb-8">The ownership has been securely transferred on the blockchain.</p>
-
-                        <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/10 text-left mb-8 space-y-4">
-                            <h4 className="font-bold text-slate-300 flex items-center gap-2 border-b border-white/5 pb-2">
-                                <FileText size={16} /> Transaction Receipt
-                            </h4>
-
-                            {transferredDetails && (
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">New Owner Name</p>
-                                        <p className="text-white font-medium">{transferredDetails.ownerName}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Contact</p>
-                                        <p className="text-white font-medium">{transferredDetails.ownerContact}</p>
-                                    </div>
-                                    <div className="col-span-2 mt-4">
-                                        <HashDisplay 
-                                            label="New Wallet Address" 
-                                            value={transferredDetails.ownerAddress} 
-                                        />
-                                    </div>
-                                    <div className="col-span-2 mt-2 pt-2 border-t border-white/5">
-                                        <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Transaction Hash</p>
-                                        <p className="font-mono text-xs text-slate-400 break-all">
-                                            {txHash}
-                                        </p>
-                                    </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="relative">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Target Product ID</label>
+                            <div className="relative group">
+                                <input
+                                    name="productId" required
+                                    value={formData.productId}
+                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
+                                    onChange={handleChange}
+                                    placeholder="Enter Token ID"
+                                />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                    {isSearching && <Loader2 size={16} className="text-cyan-400 animate-spin" />}
+                                    {!isSearching && productName && <CheckCircle size={16} className="text-emerald-400" />}
                                 </div>
-                            )}
-                        </div>
-
-                        <AnimatedButton
-                            text="Transfer Another Product"
-                            onClick={() => {
-                                setStatus("idle");
-                                setFormData({ productId: "", newOwner: "", newOwnerName: "", newOwnerContact: "" });
-                                setTransferredDetails(null);
-                                setTxHash("");
-                            }}
-                            className="bg-orange-600 hover:bg-orange-500 mx-auto"
-                        />
-                    </motion.div>
-                ) : (
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Target Product ID</label>
-                            <input
-                                name="productId" required
-                                value={formData.productId}
-                                className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                onChange={handleChange}
-                                placeholder="Token ID"
-                            />
+                            </div>
+                            
+                            <AnimatePresence>
+                                {productName && !isSearching && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -5 }}
+                                        className="mt-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg flex items-center gap-2"
+                                    >
+                                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                                        <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">
+                                            Found: <span className="text-white ml-1">{productName}</span>
+                                        </span>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         <div className="p-6 bg-slate-900/40 rounded-[2rem] border border-white/5 my-6 backdrop-blur-md shadow-inner shadow-black/20">
-                            <h4 className="text-cyan-400 font-bold mb-6 flex items-center gap-2 uppercase tracking-widest text-sm border-b border-white/5 pb-4">
-                                <ArrowRight size={16} /> New Node Designation
-                            </h4>
-
-                            <div className="flex gap-2 mb-6">
-                                <button
-                                    type="button"
-                                    onClick={handleConnectNewOwner}
-                                    className="flex-1 py-3 px-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs rounded-xl border border-cyan-500/20 transition-all flex items-center justify-center gap-2 group hover:shadow-[0_0_15px_rgba(34,211,238,0.2)]"
-                                >
-                                    <Wallet size={16} className="group-hover:scale-110 transition-transform" />
-                                    <span className="font-bold tracking-wide">Use External Wallet</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleGenerateDemoWallet}
-                                    className="flex-1 py-3 px-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs rounded-xl border border-indigo-500/20 transition-all flex items-center justify-center gap-2 group hover:shadow-[0_0_15px_rgba(129,140,248,0.2)]"
-                                >
-                                    <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
-                                    <span className="font-bold tracking-wide">Generate Demo Hash</span>
-                                </button>
-                            </div>
-
-                            <div className="space-y-5">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Target Wallet Address</label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2 flex items-center justify-between mb-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest px-1">New Owner Wallet Address</label>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            type="button"
+                                            onClick={handleConnectNewOwner}
+                                            className="text-[10px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20 transition-all"
+                                        >
+                                            <Wallet size={10} /> CONNECT
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={handleGenerateDemoWallet}
+                                            className="text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 transition-all"
+                                        >
+                                            <Wand2 size={10} /> DEMO
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2">
                                     <input
                                         name="newOwner" required
                                         value={formData.newOwner}
@@ -246,38 +231,20 @@ const TransferOwnership = () => {
                                         onChange={handleChange}
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">New Phone Number</label>
-                                    <input
-                                        name="newOwnerContact" required
-                                        value={formData.newOwnerContact}
-                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                        placeholder="Enter phone number"
-                                        onChange={handleChange}
-                                    />
-                                </div>
                             </div>
                         </div>
-
-                        {status === "error" && (
-                            <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-start gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                                <AlertCircle size={18} className="mt-0.5 shrink-0" />
-                                <span>{errorMsg}</span>
-                            </div>
-                        )}
 
                         <div className="relative pt-4">
                             <ParticleBurst trigger={showBurst} />
                             <AnimatedButton
-                                text={status === "processing" ? "Broadcasting Transfer..." : "Confirm Sequence & Transfer"}
-                                disabled={loading}
+                                text={stage === 'processing' ? "Broadcasting..." : stage === 'waiting' ? "Awaiting Wallet..." : "Confirm & Transfer"}
+                                disabled={stage !== 'idle'}
                                 icon={RefreshCw}
-                                className={`w-full py-4 text-lg ${status === "processing" ? "opacity-70 cursor-wait bg-slate-800" : "bg-slate-900 border-indigo-500/50 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"}`}
+                                className={`w-full py-4 text-lg ${stage !== 'idle' ? "opacity-70 cursor-wait bg-slate-800" : "bg-slate-900 border-indigo-500/50 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"}`}
                             />
                         </div>
                     </form>
-                )}
-            </GlassCard>
+                </GlassCard>
         </div>
     );
 };
