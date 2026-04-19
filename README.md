@@ -1,21 +1,29 @@
 # 🔗 WarrantyChain  
-### Blockchain-Based Digital Warranty & Ownership Verification System
+### Enterprise-Grade Blockchain Digital Warranty & Ownership System
 
-WarrantyChain is a decentralized Web3 application that securely stores product warranty and ownership details on the blockchain.  
-It enables instant verification, fraud prevention, QR-based validation, and secure ownership transfer.
+WarrantyChain is a professional Web3 decentralized application (dApp) that provides immutable storage for product warranties and ownership. Built on a local **Ganache** blockchain, it features a high-end user interface with real-time transaction tracking, QR-based verification, and secure asset transfers.
+
+## ✨ Key Enhancements (Latest Version)
+
+- **⚡ Professional Transaction UX**: Instant UI feedback during blockchain interactions ("Awaiting Wallet Signature", "Broadcasting to Ganache").
+- **🧾 Smart Success Receipts**: Detailed transaction cards showing Action Type, Product ID, and actual Product Name fetched from the chain.
+- **🔍 Real-Time Name Lookup**: Automatic blockchain verification of product identity during ownershp transfers.
+- **🛡️ Rebranded "Verify Warranty"**: A dedicated, security-focused verification portal with data-rich manifests and "Blockchain Verified" status indicators.
+- **🎨 Premium Aesthetics**: Sleek dark mode design with glassmorphism, pulse animations, and smooth state transitions.
+
+---
 
 ## 🚀 Features
 
-- 🔐 Secure blockchain storage (Solidity Smart Contract)
-- 🧾 Digital warranty registration
-- 👤 Ownership verification
-- 🔄 Secure ownership transfer
-- 📜 Ownership history timeline
-- 📅 Warranty validity & days remaining calculation
-- 📱 QR-based product verification
-- 📄 Downloadable verification certificate (PDF)
-- 💳 MetaMask wallet integration
-- 🌐 Public verification page (via QR link)
+- **🔐 Secure Blockchain Storage**: Implemented via Solidity Smart Contracts.
+- **🧾 Digital Warranty Registration**: Permanent, tamper-proof product records.
+- **👤 Ownership Verification**: Instant public lookup for any product identifier.
+- **🔄 Secure Ownership Transfer**: Multi-stage transfer flow with automatic name validation.
+- **📜 Ownership History**: Complete, transparent timeline of asset changes.
+- **📅 Smart Warranty Calculation**: Dynamic calculation of remaining coverage days.
+- **📱 QR-Based Portal**: Mobile-ready verification page accessible via QR code.
+- **📄 Official PDF Export**: Generate and download secure verification certificates.
+- **💳 MetaMask Integration**: Seamless connection with automated Ganache network switching.
 
 ---
 
@@ -23,123 +31,88 @@ It enables instant verification, fraud prevention, QR-based validation, and secu
 
 **Frontend**
 - React (Vite)
-- Tailwind CSS
-- Framer Motion
-- Ethers.js
+- Tailwind CSS & Vanilla CSS
+- Framer Motion (State-aware animations)
+- Ethers.js v6
 
 **Blockchain**
-- Solidity
-- Hardhat
-- Sepolia Testnet / Localhost
+- Solidity (Smart Contract)
+- Hardhat (Development Environment)
+- **Ganache Local** (Persistent Blockchain Node)
 
 **Wallet**
 - MetaMask
 
-**PDF Generation**
-- jsPDF
+**Document Engine**
+- jsPDF (Secure Certificate Generation)
 
 ---
-
-## 🧠 System Architecture
-
-WarrantyChain follows a decentralized Web3 architecture:
-
-User → Frontend (React + Ethers.js) → MetaMask → Smart Contract → Blockchain
-
-• Smart contract stores warranty and ownership data immutably  
-• Frontend interacts using Ethers.js  
-• MetaMask handles authentication and transaction signing  
-• QR verification allows public validation without wallet  
-
-This ensures transparency, security, and tamper-proof record keeping.
 
 ## ⚙️ How It Works
 
-1. Register Product → Stored on blockchain  
-2. Verify Warranty → Fetch data from blockchain  
-3. Verify Ownership → Shows current owner & history  
-4. Transfer Ownership → Securely updates ownership  
-5. QR Scan → Opens public verification page  
-6. Download Certificate → Generates official PDF  
-
-All transactions are recorded immutably on blockchain.
+1. **Register Product**: Enter details to mint a unique warranty record on the blockchain.
+2. **Verify Warranty**: Search by Product ID to view real-time registry data and validity status.
+3. **Transfer Ownership**: Securely hand over product rights to a new wallet address.
+4. **QR Scan**: Use the generated QR to access the public verification page without needing a wallet.
+5. **Download Certificate**: Export a "Blockchain Verified" PDF for physical documentation.
 
 ---
 
-## 🚀 Local Setup
+## 🚀 Local Setup with Ganache
 
-### 1️⃣ Clone Repository
+### 1️⃣ Clone & Install
 
 ```bash
 git clone https://github.com/K-Deepak1610/WarrantyChain.git
 cd WarrantyChain
-```
-### 2️⃣ Install Dependencies
-
-```bash
 npm install
-```
-
-If frontend is separate:
-
-```bash
 cd frontend
 npm install
 ```
-### 3️⃣ Start Hardhat Node
 
+### 2️⃣ Start Ganache
+- Open **Ganache UI** (Workspace) or run `ganache-cli`.
+- Ensure RPC is set to `http://127.0.0.1:7545`.
+- Chain ID: `1337`.
+
+### 3️⃣ Deploy Smart Contract
+From the project root:
 ```bash
-npx hardhat node
+npx hardhat run scripts/deploy.js --network ganache
 ```
-### 4️⃣ Deploy Smart Contract
+*Note: Ensure your Hardhat config points to `7545`.*
 
-```bash
-npx hardhat run scripts/deploy.js --network localhost
-```
-### 5️⃣ Start Frontend
+### 4️⃣ Configure MetaMask
+- Add a Custom Network: **Ganache Local**.
+- RPC URL: `http://127.0.0.1:7545`.
+- Chain ID: `1337`.
+- Currency: `ETH`.
 
+### 5️⃣ Run the App
 ```bash
+cd frontend
 npm run dev
 ```
-## 📱 QR Verification
-
-Each product generates a QR code containing a verification link.
-
-Scanning the QR:
-- Opens verification page
-- Fetches blockchain data
-- Displays ownership & warranty status
-- Allows PDF certificate download
 
 ---
 
-## 🎥 Demo Video
+## 🎥 Demo & Learning
 
-Watch the full project demonstration here:
+Watch the initial project demonstration and logic overview:
 
-👉 [Project Demo Video](https://youtu.be/1oRe3pQXAGk)
----
-
-## 🔐 Smart Contract Highlights
-
-- Prevents duplicate product IDs
-- Only current owner can transfer ownership
-- Maintains complete ownership history
-- Calculates warranty validity dynamically
-- Emits blockchain events for every transaction
+👉 [Project Overview Video](https://youtu.be/1oRe3pQXAGk)
 
 ---
 
-## 🌟 Future Improvements
+## 🔐 Smart Contract Security
 
-- Deploy on mainnet
-- Add IPFS document storage
-- Add NFT-based ownership model
-- Add multi-product dashboard analytics
-- Mobile responsive PWA version
-- Developing a mobile app
+- **Duplicate Prevention**: Product IDs are unique and cannot be re-registered.
+- **Owner-Only Transfers**: Transactions must be signed by the current legitimate owner.
+- **Immutable Log**: All state changes emit blockchain events for transparent auditing.
+- **Dynamic Validity**: Warranty status is calculated against the current block timestamp.
+
 ---
 
 ## 📜 License
 
-This project is for educational and demonstration purposes.
+This project is for educational and enterprise-demonstration purposes. All rights reserved.
