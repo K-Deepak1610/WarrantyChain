@@ -39,7 +39,56 @@ export const useTransaction = () => {
             console.error("Transaction Error:", err);
             setStage('error');
             
-            const message = err.reason || err.data?.message || err.message || "Transaction failed";
+            // Extract the most descriptive error message possible
+            let message = "Transaction failed";
+            
+            // Log for debugging (helps in support)
+            console.log("Parsing error detail:", JSON.stringify(err, (key, value) => 
+                typeof value === 'bigint' ? value.toString() : value
+            ));
+
+            if (err.reason) {
+                message = err.reason;
+            } else if (err.info?.error?.message) {
+                message = err.info.error.message;
+            } else if (err.data?.message) {
+                message = err.data.message;
+            } else if (err.message) {
+                message = err.message;
+            }
+
+            // Drill down into "Internal JSON-RPC error" or "execution reverted"
+            const drillDown = (obj) => {
+                if (!obj) return null;
+                if (typeof obj === 'string' && obj.includes("reverted:")) return obj;
+                if (obj.message && obj.message.includes("reverted:")) return obj.message;
+                if (obj.data?.message) return drillDown(obj.data.message);
+                if (obj.info?.error) return drillDown(obj.info.error);
+                return null;
+            };
+
+            const deeperMessage = drillDown(err);
+            if (deeperMessage) message = deeperMessage;
+
+            // Human-friendly mapping for common obscure labels
+            if (message.includes("Internal JSON-RPC error")) {
+                message = "Blockchain rejected this transaction. Likely a duplicate registration or invalid data.";
+            }
+            if (message.includes("user rejected")) message = "Transaction cancelled by user.";
+            if (message.includes("insufficient funds")) message = "Insufficient ETH for gas + value.";
+            if (message.includes("execution reverted") || message.includes("CALL_EXCEPTION")) {
+                if (message.toLowerCase().includes("registered")) {
+                    message = "Error: This Product ID is already registered!";
+                } else if (message.toLowerCase().includes("owner")) {
+                    message = "Error: You are not the owner of this product!";
+                } else {
+                    message = "The transaction was rejected by the Smart Contract logic.";
+                }
+            }
+
+            // Final cleanup
+            message = message.split("(")[0].replace("execution reverted:", "").trim();
+
             setError(message);
             throw err;
         }

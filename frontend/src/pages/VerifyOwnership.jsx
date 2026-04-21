@@ -11,7 +11,8 @@ import { verifyOwnership, verifyWarranty, shortenAddress } from '../utils/blockc
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
-import { Search, UserCheck, History, QrCode, Download, Settings, ShieldCheck, ShieldAlert, ShieldX, Check, X, ArrowRight, UserX, Crown } from 'lucide-react';
+import { Search, UserCheck, History, QrCode, Download, Settings, ShieldCheck, ShieldAlert, ShieldX, Check, X, ArrowRight, UserX, Crown, Loader2, AlertCircle } from 'lucide-react';
+import { useProductLookup } from '../hooks/useProductLookup';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { getBaseURL, getVerifyPageURL } from '../config';
 
@@ -23,6 +24,9 @@ const VerifyOwnership = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showScanner, setShowScanner] = useState(false);
+    
+    // Instant Lookup Hook
+    const { productName: quickName, isSearching, error: lookupError } = useProductLookup(contract, productId);
 
     const executeVerify = async (targetId) => {
         setLoading(true);
@@ -136,6 +140,29 @@ const VerifyOwnership = () => {
                         className="bg-purple-600 hover:bg-purple-500"
                     />
                 </div>
+                
+                {/* Instant Lookup Status Area */}
+                <AnimatePresence>
+                    {(isSearching || quickName || (lookupError && productId.length > 3)) && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className={`max-w-xl mx-auto mb-6 px-4 py-2 rounded-xl flex items-center gap-3 border transition-all ${
+                                isSearching ? 'bg-indigo-500/5 border-indigo-500/20 text-indigo-400' :
+                                quickName ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                'bg-red-500/10 border-red-500/20 text-red-400'
+                            }`}
+                        >
+                            {isSearching ? <Loader2 size={14} className="animate-spin" /> : 
+                             quickName ? <ShieldCheck size={14} /> : <AlertCircle size={14} />}
+                            <span className="text-xs font-bold tracking-wider uppercase">
+                                {isSearching ? "Identifying Asset..." : 
+                                 quickName ? `FOUND: ${quickName}` : "Product not found"}
+                            </span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {error && <div className="text-red-400 text-center mb-4 bg-red-900/20 border border-red-500/20 p-4 rounded-xl">{error}</div>}
 

@@ -16,7 +16,8 @@ export const registerProduct = async (contract, productDetails) => {
             productDetails.name,
             BigInt(productDetails.warrantyStart),
             BigInt(productDetails.warrantyEnd),
-            productDetails.ownerName
+            productDetails.ownerName,
+            productDetails.serialNumber
         );
         // We no longer await tx.wait() here. 
         // The UI will handle the mining state.

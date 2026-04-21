@@ -13,16 +13,20 @@ import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
 import WarrantyArtifact from '../contracts/Warranty.json';
-import { Search, CheckCircle, XCircle, QrCode, User, Calendar, Clock, Download, Settings, RefreshCcw, Cpu } from 'lucide-react';
+import { Search, CheckCircle, XCircle, QrCode, User, Calendar, Clock, Download, Settings, RefreshCcw, Cpu, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { useProductLookup } from '../hooks/useProductLookup';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { getBaseURL, getVerifyPageURL } from '../config';
 
 const VerifyWarranty = () => {
     usePageTitle('Verify Warranty');
-    const { contract } = useWallet();
+    const { contract, contractError } = useWallet();
     const [productId, setProductId] = useState("");
     const [result, setResult] = useState(null);
     const [error, setError] = useState("");
+    
+    // Instant Lookup Hook
+    const { productName: quickName, isSearching, error: lookupError } = useProductLookup(contract, productId);
     
     // State Machine: 'IDLE' | 'SCANNING' | 'VALIDATING' | 'RESULT'
     const [step, setStep] = useState('IDLE');
@@ -138,6 +142,13 @@ const VerifyWarranty = () => {
                 <QRScanner onScan={handleScanComplete} onClose={() => setStep('IDLE')} />
             )}
 
+            {contractError && (
+                <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-500 text-sm flex items-center justify-center gap-2">
+                    <AlertCircle size={16} />
+                    {contractError}
+                </div>
+            )}
+            
             <GlassCard className="relative overflow-hidden min-h-[400px] flex flex-col">
                 <AnimatePresence mode="wait">
                     
@@ -171,6 +182,29 @@ const VerifyWarranty = () => {
                                         <QrCode size={24} />
                                     </button>
                                 </div>
+                                
+                                {/* Instant Lookup Status */}
+                                <AnimatePresence>
+                                    {(isSearching || quickName || (lookupError && productId.length > 3)) && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className={`px-4 py-2 rounded-xl flex items-center gap-3 border transition-all ${
+                                                isSearching ? 'bg-indigo-500/5 border-indigo-500/20 text-indigo-400' :
+                                                quickName ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                                'bg-red-500/10 border-red-500/20 text-red-400'
+                                            }`}
+                                        >
+                                            {isSearching ? <Loader2 size={14} className="animate-spin" /> : 
+                                             quickName ? <ShieldCheck size={14} /> : <AlertCircle size={14} />}
+                                            <span className="text-xs font-bold tracking-wider uppercase">
+                                                {isSearching ? "Searching Ledger..." : 
+                                                 quickName ? `FOUND: ${quickName}` : "Product not found"}
+                                            </span>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 <AnimatedButton
                                     text="Verify Now"

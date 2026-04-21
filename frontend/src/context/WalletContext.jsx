@@ -23,6 +23,7 @@ export const WalletProvider = ({ children }) => {
     const [provider, setProvider] = useState(null);
     const [signer, setSigner] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [contractError, setContractError] = useState("");
 
     const switchToGanache = async (ethProvider) => {
         const GANACHE_CHAIN_ID = '0x539'; // 1337
@@ -74,6 +75,14 @@ export const WalletProvider = ({ children }) => {
                     browserProvider
                 );
                 setContract(readOnlyContract);
+                
+                // Health Check
+                const code = await browserProvider.getCode(ContractAddress.Warranty);
+                if (code === "0x" || code === "0x0") {
+                    setContractError("Smart contract not found on this network. Please redeploy.");
+                } else {
+                    setContractError("");
+                }
                 
                 // Check if already connected
                 const accounts = await ethProvider.request({ method: 'eth_accounts' });
@@ -181,8 +190,9 @@ export const WalletProvider = ({ children }) => {
         connectWallet,
         disconnectWallet,
         loading,
-        isConnected: !!account
-    }), [account, contract, provider, signer, loading]);
+        isConnected: !!account,
+        contractError
+    }), [account, contract, provider, signer, loading, contractError]);
 
     return (
         <WalletContext.Provider value={contextValue}>

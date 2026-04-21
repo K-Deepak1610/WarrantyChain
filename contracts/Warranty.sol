@@ -9,6 +9,7 @@ contract Warranty {
         uint256 warrantyEnd;
         address ownerAddress;
         string ownerName;
+        string serialNumber;
         uint256 createdAt;
     }
 
@@ -26,6 +27,9 @@ contract Warranty {
     
     // Check if productId exists to prevent duplicates
     mapping(string => bool) private productExists;
+    
+    // Check if serialNumber exists
+    mapping(string => bool) private serialExists;
 
     // Array to keep track of all registered products
     string[] private allProductIds;
@@ -38,9 +42,11 @@ contract Warranty {
         string memory _productName,
         uint256 _warrantyStart,
         uint256 _warrantyEnd,
-        string memory _ownerName
+        string memory _ownerName,
+        string memory _serialNumber
     ) public {
-        require(!productExists[_productId], "Product ID already registered");
+        require(products[_productId].ownerAddress == address(0), "Product ID already registered");
+        require(!serialExists[_serialNumber], "Serial Number already registered");
         require(_warrantyEnd > _warrantyStart, "Invalid warranty dates");
 
         Product memory newProduct = Product({
@@ -50,11 +56,13 @@ contract Warranty {
             warrantyEnd: _warrantyEnd,
             ownerAddress: msg.sender,
             ownerName: _ownerName,
+            serialNumber: _serialNumber,
             createdAt: block.timestamp
         });
 
         products[_productId] = newProduct;
         productExists[_productId] = true;
+        serialExists[_serialNumber] = true;
         allProductIds.push(_productId);
 
         // Add initial ownership record
@@ -150,7 +158,7 @@ contract Warranty {
         require(productExists[_productId], "Product not found");
         Product storage p = products[_productId];
         
-        require(msg.sender == p.ownerAddress, "Only owner can transfer");
+        require(msg.sender == p.ownerAddress, "Not the owner");
         require(_newOwner != address(0), "Invalid new owner address");
 
         address oldOwner = p.ownerAddress;
