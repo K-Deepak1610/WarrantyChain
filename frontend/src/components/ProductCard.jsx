@@ -21,7 +21,7 @@ const ProductCard = ({ product }) => {
             {/* Top Section: Name & ID */}
             <div className="flex justify-between items-start mb-6">
                 <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white tracking-tight leading-none mb-2 truncate group-hover:text-cyan-400 transition-colors">
+                    <h3 className="text-xl font-black text-white tracking-tight leading-[1.1] mb-2 min-h-[2.2em] line-clamp-2 group-hover:text-cyan-400 transition-colors">
                         {product.name}
                     </h3>
                     <div className="flex items-center gap-2">
@@ -78,7 +78,7 @@ const ProductCard = ({ product }) => {
             {product.specifications && (
                 <div className="mb-6 px-4 py-3 rounded-xl bg-white/5 border border-white/5 group-hover:border-indigo-500/20 transition-colors">
                     <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest mb-1">Specifications</p>
-                    <p className="text-xs text-slate-300 font-medium italic line-clamp-2">
+                    <p className="text-xs text-slate-300 font-medium italic line-clamp-4">
                         "{product.specifications}"
                     </p>
                 </div>

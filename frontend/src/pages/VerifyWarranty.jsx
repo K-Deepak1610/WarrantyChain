@@ -88,8 +88,11 @@ const VerifyWarranty = () => {
                 throw new Error("Cannot connect to blockchain. Please connect wallet.");
             }
 
-            const data = await verifyWarranty(activeContract, targetId);
-            setResult(data);
+            const [data, ownership] = await Promise.all([
+                verifyWarranty(activeContract, targetId),
+                verifyOwnership(activeContract, targetId).catch(() => ({}))
+            ]);
+            setResult({ ...data, history: ownership.history });
         } catch (err) {
             console.warn("Blockchain read failed.", err);
             setError("Product not found on the blockchain.");

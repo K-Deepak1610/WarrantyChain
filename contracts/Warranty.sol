@@ -96,24 +96,9 @@ contract Warranty {
         return allProducts;
     }
 
-    function getProduct(string memory _productId) public view returns (
-        string memory name,
-        string memory ownerName,
-        string memory ownerContact,
-        address owner,
-        uint256 start,
-        uint256 end
-    ) {
+    function getProduct(string memory _productId) public view returns (Product memory) {
         require(productExists[_productId], "Product not found");
-        Product memory p = products[_productId];
-        return (
-            p.productName,
-            p.ownerName,
-            p.ownerContact,
-            p.owner,
-            p.warrantyStart,
-            p.warrantyEnd
-        );
+        return products[_productId];
     }
 
     function verifyWarranty(string memory _productId) public view returns (
@@ -122,9 +107,11 @@ contract Warranty {
         uint256 warrantyEnd,
         bool isValid,
         uint256 daysRemaining,
-        address owner, // Renamed from ownerAddress for consistency
+        address owner,
         string memory ownerName,
-        string memory ownerContact
+        string memory ownerContact,
+        string memory serialNumber,
+        string memory specifications
     ) {
         require(productExists[_productId], "Product not found");
         Product memory p = products[_productId];
@@ -144,13 +131,15 @@ contract Warranty {
             remaining,
             p.owner,
             p.ownerName,
-            p.ownerContact
+            p.ownerContact,
+            p.serialNumber,
+            p.specifications
         );
     }
 
     function verifyOwnership(string memory _productId) public view returns (
-        address owner,
-        string memory ownerName,
+        address currentOwner,
+        string memory currentOwnerName,
         OwnershipRecord[] memory history
     ) {
         require(productExists[_productId], "Product not found");

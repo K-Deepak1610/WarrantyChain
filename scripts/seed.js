@@ -29,11 +29,22 @@ async function main() {
 
     // 3. Register test products
     const products = [
-        { id: "IP001", name: "iPhone 17 Pro Max", ownerName: "John Doe" },
-        { id: "DL002", name: "Dell XPS 15 Ultra", ownerName: "Jane Smith" }
+        { 
+            id: "SL-882", 
+            name: "Cloud Architect Suite - Enterprise", 
+            ownerName: "Deepak", 
+            ownerContact: "deepak@dev.io",
+            specifications: "Version: 2026.4, License: Perpetual, Nodes: 50, Support: 24/7 Priority"
+        },
+        { 
+            id: "NFT-991", 
+            name: "CyberPunk Genesis #001", 
+            ownerName: "Alice Crypto", 
+            ownerContact: "alice@web3.com",
+            specifications: "Artist: DigitalNoir, Rarity: Mythic, Mint: #1, Blockchain: WarrantyChain-L2"
+        }
     ];
 
-    const [deployer] = await hre.ethers.getSigners();
     const now = Math.floor(Date.now() / 1000);
     const oneYear = 365 * 24 * 60 * 60;
 
@@ -45,7 +56,9 @@ async function main() {
             now,
             now + oneYear,
             p.ownerName,
-            "SER-SN-" + p.id
+            p.ownerContact,
+            "SER-SN-" + p.id,
+            p.specifications
         );
         await tx.wait();
     }

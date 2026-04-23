@@ -42,7 +42,9 @@ export const verifyWarranty = async (contract, productId) => {
             daysRemaining: Number(result[4]),
             owner: result[5],
             ownerName: result[6],
-            ownerContact: result[7]
+            ownerContact: result[7],
+            serialNumber: result[8],
+            specifications: result[9]
         };
     } catch (error) {
         console.error("Error verifying warranty:", error);
