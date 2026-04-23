@@ -6,6 +6,7 @@ import AnimatedButton from '../components/AnimatedButton';
 import BackToDashboardButton from '../components/BackToDashboardButton';
 import QRScanner from '../components/QRScanner';
 import QRCodeDisplay from '../components/QRCodeDisplay';
+import QRModal from '../components/QRModal';
 import DownloadCertificate from '../components/DownloadCertificate';
 import HashDisplay from '../components/HashDisplay';
 import { verifyWarranty, shortenAddress } from '../utils/blockchain';
@@ -24,6 +25,7 @@ const VerifyWarranty = () => {
     const [productId, setProductId] = useState("");
     const [result, setResult] = useState(null);
     const [error, setError] = useState("");
+    const [showQRModal, setShowQRModal] = useState(false);
     
     // Instant Lookup Hook
     const { productName: quickName, isSearching, error: lookupError } = useProductLookup(contract, productId);
@@ -122,9 +124,9 @@ const VerifyWarranty = () => {
             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full blur-2xl opacity-20 pointer-events-none 
                 ${isValid ? 'bg-emerald-500' : 'bg-red-500'}`} 
             />
-            {isValid ? <CheckCircle size={64} className="text-emerald-500 mb-4 drop-shadow-[0_0_15px_rgba(16,185,129,0.8)] relative z-10" /> : <XCircle size={64} className="text-red-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)] relative z-10" />}
+            {isValid ? null : <XCircle size={64} className="text-red-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)] relative z-10" />}
             <h3 className={`text-3xl font-black tracking-tight relative z-10 ${isValid ? 'text-emerald-400' : 'text-red-400'}`}>
-                {isValid ? "WARRANTY VALID" : "WARRANTY EXPIRED"}
+                {isValid ? "WARRANTY ACTIVE" : "WARRANTY EXPIRED"}
             </h3>
             <p className={`text-xl mt-2 font-mono relative z-10 ${isValid ? 'text-emerald-200' : 'text-red-300'}`}>
                 {isValid ? `${days} Days Remaining` : "Warranty Period Over"}
@@ -134,7 +136,7 @@ const VerifyWarranty = () => {
 
     return (
         <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto relative min-h-[80vh] flex flex-col justify-center">
-            <div className="absolute top-0 left-0">
+            <div className="mb-6">
                 <BackToDashboardButton />
             </div>
 
@@ -233,12 +235,12 @@ const VerifyWarranty = () => {
                                 <Cpu size={40} className="text-cyan-400 animate-pulse drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
                             </div>
                             
-                            <h3 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">Decoupling Hash</h3>
+                            <h3 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">Checking Blockchain</h3>
                             
                             <div className="bg-slate-950 border border-cyan-500/30 px-6 py-3 rounded-xl font-mono text-cyan-400 tracking-widest shadow-inner shadow-cyan-900/50 min-w-[300px] text-center">
                                 {hashDecoded}
                             </div>
-                            <p className="text-slate-500 text-sm mt-6 animate-pulse">Querying distributed ledger...</p>
+                            <p className="text-slate-500 text-sm mt-6 animate-pulse">Fetching details from the ledger...</p>
                         </motion.div>
                     )}
 
@@ -262,6 +264,23 @@ const VerifyWarranty = () => {
                                 <div className="space-y-6">
                                     <StatusBadge isValid={result.isValid} days={result.daysRemaining} />
 
+                                    {/* New Authenticity Card */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-5 flex items-center gap-4 shadow-[0_0_20px_rgba(59,130,246,0.1)]"
+                                    >
+                                        <div className="p-3 rounded-2xl bg-blue-500/20 border border-blue-500/40">
+                                            <ShieldCheck size={28} className="text-blue-400" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-blue-400 font-bold text-sm uppercase tracking-widest mb-1">Ownership Verified</h4>
+                                            <p className="text-blue-100 text-sm leading-relaxed">
+                                                This product is registered on <strong>WarrantyChain</strong> and <strong>{result.ownerName}</strong> is the current owner.
+                                            </p>
+                                        </div>
+                                    </motion.div>
+
                                     <div className="bg-slate-950/40 rounded-3xl p-6 border border-white/5 space-y-4 backdrop-blur-md relative overflow-hidden group">
                                         <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                                             <ShieldCheck size={100} />
@@ -278,11 +297,11 @@ const VerifyWarranty = () => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                                             <div>
-                                                <p className="text-slate-500 text-[10px] font-black mb-1 tracking-widest uppercase">Product Manifest</p>
+                                                <p className="text-slate-500 text-[10px] font-black mb-1 tracking-widest uppercase">Product Name</p>
                                                 <p className="text-white font-bold text-xl drop-shadow-sm">{result.productName}</p>
                                             </div>
                                             <div>
-                                                <p className="text-slate-500 text-[10px] font-black mb-1 tracking-widest uppercase">Digital Identifier</p>
+                                                <p className="text-slate-500 text-[10px] font-black mb-1 tracking-widest uppercase">Product ID</p>
                                                 <p className="text-cyan-400 font-mono text-sm break-all bg-black/30 p-2 rounded-lg border border-white/5">{productId}</p>
                                             </div>
                                         </div>
@@ -290,14 +309,14 @@ const VerifyWarranty = () => {
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20"><Calendar className="text-emerald-400" size={18} /></div>
                                                 <div>
-                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Activation</p>
+                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Warranty Register</p>
                                                     <p className="text-slate-100 text-sm font-mono">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20"><Clock className="text-red-400" size={18} /></div>
                                                 <div>
-                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Expiration</p>
+                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Warranty Expiry</p>
                                                     <p className="text-slate-100 text-sm font-mono">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
@@ -309,48 +328,59 @@ const VerifyWarranty = () => {
                                             <User size={18} /> Owner Node
                                         </h3>
                                         <div className="space-y-3 font-mono text-sm">
-                                            <div className="flex justify-between border-b mx-4 border-white/5 pb-2">
-                                                <span className="text-slate-500">Identity</span>
-                                                <span className="text-slate-200">{result.ownerName}</span>
+                                            <div className="flex justify-between items-center py-3 border-b border-white/5">
+                                                <span className="text-slate-400">Owner Name</span>
+                                                <span className="text-white font-medium">{result.ownerName}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-3 border-b border-white/5">
+                                                <span className="text-slate-400">Owner Contact</span>
+                                                <span className="text-white font-medium">{result.ownerContact || "Not Provided"}</span>
                                             </div>
                                             <div className="pt-2 mx-4">
                                                 <HashDisplay 
-                                                    label="Wallet Hash" 
-                                                    value={shortenAddress(result.ownerAddress)} 
+                                                    label="Owner Wallet Address" 
+                                                    value={shortenAddress(result.owner)} 
                                                     isBackup={false}
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
-                                        <div className="p-4 bg-white/5 rounded-[2rem] border border-white/10 shadow-2xl shadow-cyan-900/20">
-                                            <QRCodeDisplay 
-                                                value={`${getVerifyPageURL()}?name=${encodeURIComponent(result.productName)}&id=${encodeURIComponent(productId)}&owner=${encodeURIComponent(result.ownerName)}&status=${result.isValid ? 'Active' : 'Expired'}&valid=${encodeURIComponent(new Date(result.warrantyEnd * 1000).toLocaleDateString())}`} 
-                                                title="" 
-                                            />
-                                        </div>
+                                    <QRModal 
+                                        isOpen={showQRModal}
+                                        onClose={() => setShowQRModal(false)}
+                                        value={`${getVerifyPageURL()}?name=${encodeURIComponent(result.productName)}&id=${encodeURIComponent(productId)}&owner=${encodeURIComponent(result.ownerName)}&status=${result.isValid ? 'Active' : 'Expired'}&valid=${encodeURIComponent(new Date(result.warrantyEnd * 1000).toLocaleDateString())}`}
+                                        metadata={{ productName: result.productName, productId: productId }}
+                                    />
 
-                                        <div className="w-full grid grid-cols-2 gap-4">
-                                            <button
-                                                onClick={() => setStep('IDLE')}
-                                                className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-all active:scale-95"
-                                            >
-                                                <Search size={18} />
-                                                New Scan
-                                            </button>
-                                            <button
-                                                onClick={() => generateCertificate({
-                                                    ...result,
-                                                    productId,
-                                                    contractAddress: ContractAddress.Warranty
-                                                })}
-                                                className="relative group overflow-hidden flex items-center justify-center gap-2 bg-slate-900 border border-transparent px-6 py-4 rounded-xl text-white font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-                                            >
-                                                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-indigo-500 opacity-50 blur-sm group-hover:opacity-100 transition-opacity" />
-                                                <div className="absolute inset-[1px] bg-slate-900 rounded-[11px]" />
-                                                <Download size={18} className="relative z-10 text-cyan-400 group-hover:animate-bounce" />
-                                                <span className="relative z-10">Export PDF</span>
-                                            </button>
+                                    <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <button
+                                            onClick={() => setStep('IDLE')}
+                                            className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-all active:scale-95 text-sm font-bold"
+                                        >
+                                            <Search size={18} />
+                                            New Scan
+                                        </button>
+                                        
+                                        <button
+                                            onClick={() => setShowQRModal(true)}
+                                            className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all active:scale-95 text-sm font-black tracking-wide shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)]"
+                                        >
+                                            <QrCode size={18} className="drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                                            Generate QR
+                                        </button>
+
+                                        <button
+                                            onClick={() => generateCertificate({
+                                                ...result,
+                                                productId,
+                                                contractAddress: ContractAddress.Warranty
+                                            })}
+                                            className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all active:scale-95 text-sm font-black tracking-wide shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)]"
+                                        >
+                                            <Download size={18} className="drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                                            Export PDF
+                                        </button>
                                         </div>
                                     </div>
                                 )}

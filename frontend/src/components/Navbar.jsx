@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { shortenAddress } from '../utils/blockchain';
-import { ShieldCheck, LogOut, Loader2, Command, Menu, X, CheckCircle, Search } from 'lucide-react';
+import { ShieldCheck, LogOut, Loader2, Command, Menu, X, CheckCircle, Search, PlusCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
 
@@ -79,21 +79,11 @@ const Navbar = ({ setShowCommandPalette }) => {
 
                     {/* Desktop Nav */}
                     <div className="hidden md:flex items-center gap-6">
-                        {/* Public links */}
-                        {publicNavLinks.map(({ to, label }) => (
-                            <NavLink key={to} to={to} label={label} />
-                        ))}
                         {isConnected && <NavLink to="/dashboard" label="Dashboard" />}
-
-                        {/* Search shortcut */}
-                        <button
-                            onClick={() => setShowCommandPalette(true)}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white transition-colors text-sm"
-                        >
-                            <Command size={13} />
-                            <span>Search</span>
-                            <kbd className="ml-1 font-mono text-[10px] bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">⌘K</kbd>
-                        </button>
+                        {isConnected && <NavLink to="/register" label="Register" />}
+                        <NavLink to="/verify-warranty" label="Verify Warranty" />
+                        <NavLink to="/verify-ownership" label="Ownership" />
+                        {isConnected && <NavLink to="/transfer-ownership" label="Transfer" />}
 
                         {/* Wallet button area */}
                         <AnimatePresence mode="wait">
@@ -184,16 +174,30 @@ const Navbar = ({ setShowCommandPalette }) => {
                         className="fixed top-[65px] left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-b border-white/10 overflow-hidden md:hidden"
                     >
                         <div className="px-6 py-5 flex flex-col gap-4">
-                            {publicNavLinks.map(({ to, label, icon: Icon }) => (
-                                <Link key={to} to={to} className="flex items-center gap-3 text-slate-300 hover:text-white font-medium py-2 border-b border-white/5">
-                                    <Icon size={16} className="text-slate-500" />
-                                    {label}
-                                </Link>
-                            ))}
                             {isConnected && (
                                 <Link to="/dashboard" className="flex items-center gap-3 text-slate-300 hover:text-white font-medium py-2 border-b border-white/5">
                                     <ShieldCheck size={16} className="text-slate-500" />
                                     Dashboard
+                                </Link>
+                            )}
+                            {isConnected && (
+                                <Link to="/register" className="flex items-center gap-3 text-slate-300 hover:text-white font-medium py-2 border-b border-white/5">
+                                    <PlusCircle size={16} className="text-slate-500" />
+                                    Register
+                                </Link>
+                            )}
+                            <Link to="/verify-warranty" className="flex items-center gap-3 text-slate-300 hover:text-white font-medium py-2 border-b border-white/5">
+                                <CheckCircle size={16} className="text-slate-500" />
+                                Verify Warranty
+                            </Link>
+                            <Link to="/verify-ownership" className="flex items-center gap-3 text-slate-300 hover:text-white font-medium py-2 border-b border-white/5">
+                                <Search size={16} className="text-slate-500" />
+                                Ownership
+                            </Link>
+                            {isConnected && (
+                                <Link to="/transfer-ownership" className="flex items-center gap-3 text-slate-300 hover:text-white font-medium py-2 border-b border-white/5">
+                                    <RefreshCw size={16} className="text-slate-500" />
+                                    Transfer
                                 </Link>
                             )}
                             <div className="pt-2">

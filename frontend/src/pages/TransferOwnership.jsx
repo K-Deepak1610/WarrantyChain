@@ -5,24 +5,25 @@ import GlassCard from '../components/GlassCard';
 import AnimatedButton from '../components/AnimatedButton';
 import BackToDashboardButton from '../components/BackToDashboardButton';
 import ParticleBurst from '../components/ParticleBurst';
-import { transferOwnership, verifyWarranty } from '../utils/blockchain';
+import { transferOwnership, verifyWarranty, shortenAddress } from '../utils/blockchain';
 import { useWallet } from '../context/WalletContext';
-import { RefreshCw, ArrowRight, Wallet, Wand2, Loader2, CheckCircle } from 'lucide-react';
+import { RefreshCw, ArrowRight, Wallet, CheckCircle, ShieldCheck, AlertCircle, Loader2, Sparkles, User, Box } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useTransaction } from '../hooks/useTransaction';
 import TransactionModal from '../components/TransactionModal';
 
 const TransferOwnership = () => {
     usePageTitle('Transfer Ownership');
-    const { contract } = useWallet();
+    const { account, contract, selectAccount, isConnected, connectWallet } = useWallet();
     const { stage, status, error, txHash, metadata, execute, reset } = useTransaction();
     
     const [formData, setFormData] = useState({
         productId: "",
         newOwner: "",
-        newOwnerName: ""
+        newOwnerName: "",
+        newOwnerContact: ""
     });
-    const [productName, setProductName] = useState("");
+    const [productDetails, setProductDetails] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
     const [showBurst, setShowBurst] = useState(false);
 
@@ -33,7 +34,7 @@ const TransferOwnership = () => {
             if (cleanedId?.length > 2 && contract) {
                 lookupProductName(cleanedId);
             } else {
-                setProductName("");
+                setProductDetails(null);
             }
         }, 400);
 
@@ -43,208 +44,209 @@ const TransferOwnership = () => {
     const lookupProductName = async (id) => {
         setIsSearching(true);
         try {
-            const cleanId = id.trim();
-            // Use our specialized verify utility which we know is robust
-            const data = await verifyWarranty(contract, cleanId);
-            
+            const data = await verifyWarranty(contract, id.trim());
             if (data && data.productName && data.productName !== "") {
-                setProductName(data.productName);
+                setProductDetails(data);
             } else {
-                setProductName("");
+                setProductDetails(null);
             }
         } catch (err) {
-            console.error("Lookup error:", err);
-            setProductName("");
+            setProductDetails(null);
         } finally {
             setIsSearching(false);
         }
     };
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+    const isMatch = !productDetails || !account || productDetails.owner?.toLowerCase() === account?.toLowerCase();
 
-    const handleGenerateDemoWallet = () => {
-        const wallet = ethers.Wallet.createRandom();
-        setFormData({ ...formData, newOwner: wallet.address });
-        alert(`Demo Wallet Generated!\n\nAddress: ${wallet.address}\nPrivate Key: ${wallet.privateKey}\n\nSAVE THIS if you want to use this account later!`);
-    };
-
-    const handleConnectNewOwner = async () => {
-        if (!window.ethereum) {
-            alert("MetaMask is not installed. Please install it to use this feature.");
-            return;
-        }
-        try {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (accounts.length > 0) {
-                setFormData(prev => ({ ...prev, newOwner: accounts[0] }));
-            }
-        } catch (err) {
-            console.error("Wallet connection failed:", err);
-            alert(err.message || "Failed to connect wallet.");
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const getButtonState = () => {
+        if (!isConnected) return { text: "Connect Wallet", icon: Wallet, action: connectWallet, color: "blue" };
+        if (!formData.productId) return { text: "Enter Product ID", icon: Box, action: null, disabled: true };
+        if (isSearching) return { text: "Verifying Asset...", icon: Loader2, action: null, disabled: true, spin: true };
+        if (!productDetails) return { text: "Invalid Product ID", icon: AlertCircle, action: null, disabled: true };
+        if (!isMatch) return { text: "Switch to Owner Wallet", icon: RefreshCw, action: selectAccount, color: "amber" };
+        if (!formData.newOwner || !formData.newOwnerName || !formData.newOwnerContact) return { text: "Enter Recipient Details", icon: User, action: null, disabled: true };
         
+        return { 
+            text: stage === 'processing' ? "Transferring..." : "Confirm & Transfer", 
+            icon: Sparkles, 
+            action: handleTransfer,
+            disabled: stage !== 'idle'
+        };
+    };
+
+    const handleTransfer = async () => {
         const cleanId = formData.productId.trim();
-        if (!contract) {
-            alert("Smart contract not initialized. Please connect your wallet.");
-            return;
-        }
-
-        try {
-            // Final safety check using the robust utility
-            let finalName = productName;
-            if (!finalName || finalName === "") {
-                try {
-                    const data = await verifyWarranty(contract, cleanId);
-                    finalName = data.productName;
-                } catch (err) {
-                    console.warn("Final name lookup failed", err);
-                }
+        await execute(
+            transferOwnership(contract, cleanId, formData.newOwner, formData.newOwnerName, formData.newOwnerContact),
+            {
+                action: "Transferred",
+                productId: cleanId,
+                productName: productDetails?.productName || "Asset",
+                ownerName: formData.newOwnerName,
+                walletAddress: formData.newOwner,
+                ownerContact: formData.newOwnerContact
             }
-
-            await execute(
-                transferOwnership(
-                    contract,
-                    cleanId,
-                    formData.newOwner,
-                    formData.newOwnerName
-                ),
-                {
-                    action: "Transferred",
-                    productId: cleanId,
-                    productName: (finalName && finalName !== "") ? finalName : "Asset " + cleanId, 
-                    ownerName: formData.newOwnerName,
-                    walletAddress: formData.newOwner
-                }
-            );
-
-            setShowBurst(true);
-            setTimeout(() => setShowBurst(false), 2000);
-
-        } catch (error) {
-            console.error("Transfer flow failed:", error);
-        }
+        );
+        setShowBurst(true);
+        setTimeout(() => setShowBurst(false), 2000);
     };
 
     const handleReset = () => {
         reset();
         if (stage === 'success') {
-            setFormData({ productId: "", newOwner: "", newOwnerName: "" });
-            setProductName("");
+            setFormData({ productId: "", newOwner: "", newOwnerName: "", newOwnerContact: "" });
+            setProductDetails(null);
         }
     };
 
+    const buttonState = getButtonState();
+
     return (
-        <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto relative">
-            <BackToDashboardButton />
+        <div className="pt-24 pb-12 px-6 max-w-2xl mx-auto relative min-h-screen flex flex-col justify-center">
+            <div className="mb-8">
+                <BackToDashboardButton />
+            </div>
 
-            <TransactionModal 
-                stage={stage}
-                status={status}
-                error={error}
-                txHash={txHash}
-                metadata={metadata}
-                onClose={handleReset}
-            />
+            <TransactionModal stage={stage} status={status} error={error} txHash={txHash} metadata={metadata} onClose={handleReset} />
 
-            <GlassCard>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-yellow-500 bg-clip-text text-transparent mb-6 text-center">
-                    Transfer Ownership
+            <div className="text-center mb-10">
+                <h2 className="text-4xl font-black bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-500 bg-clip-text text-transparent mb-2 tracking-tight">
+                    Smart Transfer
                 </h2>
+                <p className="text-slate-500 text-sm font-medium tracking-wide">Blockchain ownership migration protocol</p>
+            </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="relative">
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Target Product ID</label>
-                            <div className="relative group">
-                                <input
-                                    name="productId" required
-                                    value={formData.productId}
-                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                    onChange={handleChange}
-                                    placeholder="Enter Token ID"
-                                />
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                                    {isSearching && <Loader2 size={16} className="text-cyan-400 animate-spin" />}
-                                    {!isSearching && productName && <CheckCircle size={16} className="text-emerald-400" />}
-                                </div>
+            <GlassCard className="relative overflow-visible">
+                <div className="space-y-8">
+                    
+                    {/* PRODUCT INPUT */}
+                    <div className="space-y-4">
+                        <div className="relative group">
+                            <input
+                                name="productId"
+                                value={formData.productId}
+                                onChange={(e) => setFormData({...formData, productId: e.target.value})}
+                                placeholder="Enter Product ID (e.g. IP001)"
+                                className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-5 text-white focus:outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/5 transition-all font-mono text-lg shadow-inner shadow-black"
+                            />
+                            <div className="absolute right-5 top-1/2 -translate-y-1/2">
+                                {isSearching ? <Loader2 size={24} className="text-orange-400 animate-spin" /> : 
+                                 productDetails ? <CheckCircle size={24} className="text-emerald-500" /> : <Box size={24} className="text-slate-700" />}
                             </div>
-                            
-                            <AnimatePresence>
-                                {productName && !isSearching && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, y: -5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -5 }}
-                                        className="mt-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg flex items-center gap-2"
-                                    >
-                                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                                        <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">
-                                            Found: <span className="text-white ml-1">{productName}</span>
-                                        </span>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
                         </div>
 
-                        <div className="p-6 bg-slate-900/40 rounded-[2rem] border border-white/5 my-6 backdrop-blur-md shadow-inner shadow-black/20">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="md:col-span-2 flex items-center justify-between mb-2">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest px-1">New Owner Wallet Address</label>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            type="button"
-                                            onClick={handleConnectNewOwner}
-                                            className="text-[10px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20 transition-all"
-                                        >
-                                            <Wallet size={10} /> CONNECT
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={handleGenerateDemoWallet}
-                                            className="text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 transition-all"
-                                        >
-                                            <Wand2 size={10} /> DEMO
-                                        </button>
+                        <AnimatePresence>
+                            {productDetails && (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className="bg-slate-900/60 border border-white/5 rounded-2xl p-6"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Asset</p>
+                                            <p className="text-xl font-bold text-white tracking-tight">{productDetails.productName}</p>
+                                        </div>
+                                        <div className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${isMatch ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}`}>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${isMatch ? 'bg-emerald-400 animate-pulse' : 'bg-orange-400'}`} />
+                                            {isMatch ? 'Unlocked' : 'Locked'}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <input
-                                        name="newOwner" required
-                                        value={formData.newOwner}
-                                        placeholder="0x..."
-                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                        onChange={handleChange}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">New Owner Name</label>
-                                    <input
-                                        name="newOwnerName" required
-                                        value={formData.newOwnerName}
-                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                        placeholder="Enter full name"
-                                        onChange={handleChange}
-                                    />
+
+                                    {!isMatch && (
+                                        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/5 text-xs text-orange-300/80">
+                                            <AlertCircle size={14} />
+                                            <p>Owned by <span className="font-mono">{shortenAddress(productDetails.owner)}</span></p>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* RECEIVER INPUTS */}
+                    <div className={`space-y-6 transition-all duration-500 ${!productDetails || !isMatch ? 'opacity-30 pointer-events-none scale-98 blur-sm' : 'opacity-100'}`}>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Receiver Address</label>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={(e) => { e.preventDefault(); setFormData({...formData, newOwner: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"}); }}
+                                        className="text-[9px] font-black text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-lg hover:bg-orange-500/20 transition-all active:scale-95 uppercase tracking-tighter"
+                                    >
+                                        Fill: Account 2
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.preventDefault(); setFormData({...formData, newOwner: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"}); }}
+                                        className="text-[9px] font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-lg hover:bg-indigo-500/20 transition-all active:scale-95 uppercase tracking-tighter"
+                                    >
+                                        Fill: Account 1
+                                    </button>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="relative pt-4">
-                            <ParticleBurst trigger={showBurst} />
-                            <AnimatedButton
-                                text={stage === 'processing' ? "Broadcasting..." : stage === 'waiting' ? "Awaiting Wallet..." : "Confirm & Transfer"}
-                                disabled={stage !== 'idle'}
-                                icon={RefreshCw}
-                                className={`w-full py-4 text-lg ${stage !== 'idle' ? "opacity-70 cursor-wait bg-slate-800" : "bg-slate-900 border-indigo-500/50 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"}`}
+                            <input
+                                name="newOwner"
+                                value={formData.newOwner}
+                                onChange={(e) => setFormData({...formData, newOwner: e.target.value})}
+                                placeholder="Paste or Quick-Fill Wallet Address"
+                                className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-5 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-mono shadow-inner shadow-black"
                             />
                         </div>
-                    </form>
-                </GlassCard>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Receiver Name</label>
+                                <input
+                                    name="newOwnerName"
+                                    value={formData.newOwnerName}
+                                    onChange={(e) => setFormData({...formData, newOwnerName: e.target.value})}
+                                    placeholder="Full name"
+                                    className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-5 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-mono shadow-inner shadow-black"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Receiver Contact</label>
+                                <input
+                                    name="newOwnerContact"
+                                    value={formData.newOwnerContact}
+                                    onChange={(e) => setFormData({...formData, newOwnerContact: e.target.value})}
+                                    placeholder="Phone/Email"
+                                    className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-5 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-mono shadow-inner shadow-black"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ACTION AREA */}
+                    <div className="pt-4 relative">
+                        <ParticleBurst trigger={showBurst} />
+                        <button
+                            disabled={buttonState.disabled}
+                            onClick={buttonState.action}
+                            className={`w-full py-5 rounded-2xl font-black text-lg transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 shadow-xl
+                                ${buttonState.disabled 
+                                    ? 'bg-slate-800 text-slate-600 border border-white/5 cursor-not-allowed grayscale' 
+                                    : buttonState.color === 'blue'
+                                        ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'
+                                        : buttonState.color === 'amber'
+                                            ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-500/20 animate-pulse'
+                                            : 'bg-slate-900 border border-white/10 text-white hover:border-orange-500/50 shadow-orange-500/10'
+                                }`}
+                        >
+                            <buttonState.icon size={22} className={buttonState.spin ? 'animate-spin' : ''} />
+                            {buttonState.text}
+                        </button>
+                        
+                        {buttonState.color === 'amber' && (
+                            <p className="text-center text-[10px] text-orange-500/60 font-black uppercase tracking-[0.2em] mt-4 flex items-center justify-center gap-2">
+                                <AlertCircle size={10} /> Account Switch Required to Unlock
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </GlassCard>
         </div>
     );
 };

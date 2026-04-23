@@ -161,13 +161,17 @@ const PublicVerify = () => {
                                         </h3>
                                         <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-3">
                                             <div className="flex justify-between items-center text-sm">
-                                                <span className="text-slate-400">Legal Owner</span>
-                                                <span className="text-white font-bold">{result.ownerName}</span>
+                                                <p className="text-white/50 text-xs">Owner Name</p>
+                                                <p className="text-white font-medium">{result.ownerName}</p>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <p className="text-white/50 text-xs">Owner Contact</p>
+                                                <p className="text-blue-400 font-medium">{result.ownerContact || "Not Provided"}</p>
                                             </div>
                                             <div className="pt-4">
                                                 <HashDisplay 
-                                                    label="Blockchain Address" 
-                                                    value={shortenAddress(result.ownerAddress)} 
+                                                    label="Owner Wallet Address" 
+                                                    value={shortenAddress(result.owner)} 
                                                     isBackup={false} 
                                                 />
                                             </div>
@@ -190,11 +194,11 @@ const PublicVerify = () => {
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Start Date</span>
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Warranty Register</span>
                                                     <span className="text-white text-sm font-medium">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</span>
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">End Date</span>
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Warranty Expiry</span>
                                                     <span className="text-white text-sm font-medium">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
@@ -233,12 +237,15 @@ const PublicVerify = () => {
                                     <div className="flex overflow-x-auto pb-4 gap-6 scrollbar-hide">
                                         {result.history.map((record, i) => (
                                             <div key={i} className="min-w-[200px] bg-white/5 p-4 rounded-2xl border border-white/5 relative">
-                                                <div className="flex items-center gap-2 mb-4">
-                                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                                    <span className="text-white font-bold text-sm">{record.ownerName}</span>
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                                        <span className="text-white font-bold text-sm">{record.ownerName}</span>
+                                                    </div>
+                                                    <span className="text-[9px] text-blue-400/80 font-bold">{record.ownerContact || "---"}</span>
                                                 </div>
                                                 <div className="mb-3">
-                                                    <HashDisplay value={record.ownerAddress} isBackup={false} />
+                                                    <HashDisplay value={record.owner} isBackup={false} />
                                                 </div>
                                                 <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">{new Date(record.transferDate * 1000).toLocaleDateString()}</p>
                                                 {i === result.history.length - 1 && (

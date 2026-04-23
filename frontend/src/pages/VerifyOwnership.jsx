@@ -5,13 +5,14 @@ import AnimatedButton from '../components/AnimatedButton';
 import BackToDashboardButton from '../components/BackToDashboardButton';
 import QRScanner from '../components/QRScanner';
 import QRCodeDisplay from '../components/QRCodeDisplay';
+import QRModal from '../components/QRModal';
 import DownloadCertificate from '../components/DownloadCertificate';
 import HashDisplay from '../components/HashDisplay';
 import { verifyOwnership, verifyWarranty, shortenAddress } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
-import { Search, UserCheck, History, QrCode, Download, Settings, ShieldCheck, ShieldAlert, ShieldX, Check, X, ArrowRight, UserX, Crown, Loader2, AlertCircle } from 'lucide-react';
+import { Search, UserCheck, History, QrCode, Download, Settings, ShieldCheck, ShieldAlert, ShieldX, Check, X, ArrowRight, UserX, Crown, Loader2, AlertCircle, PlusCircle } from 'lucide-react';
 import { useProductLookup } from '../hooks/useProductLookup';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { getBaseURL, getVerifyPageURL } from '../config';
@@ -24,6 +25,7 @@ const VerifyOwnership = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showScanner, setShowScanner] = useState(false);
+    const [showQRModal, setShowQRModal] = useState(false);
     
     // Instant Lookup Hook
     const { productName: quickName, isSearching, error: lookupError } = useProductLookup(contract, productId);
@@ -75,40 +77,44 @@ const VerifyOwnership = () => {
     // Authenticity Signals
     const renderAuthenticitySection = (data) => {
         const connectedAddress = window.ethereum?.selectedAddress?.toLowerCase() || "";
-        const ownerAddress = data.ownerAddress?.toLowerCase() || "";
+        const ownerAddress = data.owner?.toLowerCase() || "";
         const isOwner = connectedAddress && connectedAddress === ownerAddress;
 
-        if (isOwner) {
-            return (
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-6 items-center shadow-[0_0_30px_rgba(16,185,129,0.1)]">
-                    <div className="p-4 bg-emerald-500/20 rounded-full animate-pulse border border-emerald-500/50 relative">
-                        <div className="absolute inset-0 rounded-full blur-md bg-emerald-500/20" />
-                        <ShieldCheck size={36} className="text-emerald-400 relative z-10" />
-                    </div>
-                    <div className="flex-1 text-center md:text-left">
-                        <h3 className="text-emerald-400 font-bold font-mono tracking-widest text-lg mb-1">Ownership Verified ✅</h3>
-                        <p className="text-emerald-400/70 text-sm mb-4">The connected wallet is the rightful owner of the product.</p>
-                    </div>
-                </div>
-            );
-        }
-
         return (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-6 items-center shadow-[0_0_30px_rgba(239,68,68,0.1)]">
-                <div className="p-4 bg-red-500/20 rounded-full border border-red-500/50">
-                    <ShieldX size={36} className="text-red-400" />
+            <div className={`border rounded-2xl p-4 mb-6 flex flex-col md:flex-row gap-5 items-center shadow-md transition-all duration-500 ${isOwner ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
+                <div className={`p-3 rounded-full border relative ${isOwner ? 'bg-emerald-500/20 border-emerald-500/50 animate-pulse' : 'bg-blue-500/20 border-blue-500/50'}`}>
+                    <div className={`absolute inset-0 rounded-full blur-md opacity-20 ${isOwner ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                    {isOwner ? <ShieldCheck size={28} className="text-emerald-400 relative z-10" /> : <ShieldCheck size={28} className="text-blue-400 relative z-10" />}
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-red-400 font-bold font-mono tracking-widest text-lg mb-1">Ownership Not Verified ❌</h3>
-                    <p className="text-red-400/70 text-sm mb-4">The connected wallet does not match the registered owner.</p>
+                    <div className="flex flex-col md:flex-row md:items-center gap-3 mb-1">
+                        <h3 className={`font-bold font-mono tracking-widest text-base ${isOwner ? 'text-emerald-400' : 'text-blue-400'}`}>
+                            Ownership Verified
+                        </h3>
+                        <span className={`w-fit mx-auto md:mx-0 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${isOwner ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-blue-500/20 border-blue-500/40 text-blue-300'}`}>
+                            Verified by WarrantyChain
+                        </span>
+                    </div>
+                    <p className={`text-xs opacity-90 ${isOwner ? 'text-emerald-400/90' : 'text-blue-200'}`}>
+                        {isOwner 
+                            ? `This product is registered on WarrantyChain and you, ${data.ownerName}, are the owner.`
+                            : `This product is registered on WarrantyChain and ${data.ownerName || 'the current holder'} is the owner.`}
+                    </p>
                 </div>
+                {isOwner && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 rounded-lg text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                        <Check size={12} /> Owner Verified
+                    </div>
+                )}
             </div>
         );
     };
 
     return (
         <div className="pt-24 pb-12 px-6 max-w-3xl mx-auto relative">
-            <BackToDashboardButton />
+            <div className="mb-8">
+                <BackToDashboardButton />
+            </div>
             <AnimatePresence>
                 {showScanner && <QRScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
             </AnimatePresence>
@@ -205,10 +211,10 @@ const VerifyOwnership = () => {
                             {result.history.map((record, index) => {
                                 const isCurrent = index === result.history.length - 1;
                                 
-                                // Strict fallbacks for missing ownerAddresses in local cache
-                                let resolvedAddress = record.ownerAddress;
+                                // Strict fallbacks for missing owners in local cache
+                                let resolvedAddress = record.owner;
                                 if (!resolvedAddress && isCurrent) {
-                                    resolvedAddress = result.ownerAddress || result.owner || result.currentOwner || null;
+                                    resolvedAddress = result.owner || null;
                                 }
 
                                 // Timeline connection visualizer (between cards)
@@ -259,6 +265,9 @@ const VerifyOwnership = () => {
                                                         <h3 className={`text-xl font-bold ${isCurrent ? 'text-emerald-400' : 'text-slate-300'}`}>
                                                             {record.ownerName}
                                                         </h3>
+                                                        <p className={`text-xs font-medium ${isCurrent ? 'text-emerald-500/70' : 'text-slate-500'}`}>
+                                                            {record.ownerContact || "No contact recorded"}
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-2">
@@ -277,8 +286,8 @@ const VerifyOwnership = () => {
                                                         <>
                                                             {result.warrantyEnd ? (
                                                                 (result.warrantyEnd * 1000 > Date.now()) 
-                                                                ? <span className="bg-emerald-950/40 border border-emerald-900 text-emerald-400/80 text-[9px] uppercase px-2 py-0.5 rounded font-bold">✓ WARRANTY ACTIVE — expires {new Date(result.warrantyEnd * 1000).toLocaleDateString()}</span>
-                                                                : <span className="bg-red-950/40 border border-red-900 text-red-400/80 text-[9px] uppercase px-2 py-0.5 rounded font-bold">✗ WARRANTY EXPIRED — expired {new Date(result.warrantyEnd * 1000).toLocaleDateString()}</span>
+                                                                ? <span className="bg-emerald-950/40 border border-emerald-900 text-emerald-400/80 text-[9px] uppercase px-2 py-0.5 rounded font-bold">WARRANTY ACTIVE — expires {new Date(result.warrantyEnd * 1000).toLocaleDateString()}</span>
+                                                                : <span className="bg-red-950/40 border border-red-900 text-red-400/80 text-[9px] uppercase px-2 py-0.5 rounded font-bold">WARRANTY EXPIRED — expired {new Date(result.warrantyEnd * 1000).toLocaleDateString()}</span>
                                                             ) : (
                                                                 <span className="bg-slate-800 border border-slate-700 text-slate-400 text-[9px] uppercase px-2 py-0.5 rounded font-bold">Warranty Period Unknown</span>
                                                             )}
@@ -291,13 +300,13 @@ const VerifyOwnership = () => {
                                                 <div className="flex flex-col flex-1 max-w-[60%] mr-4">
                                                     {resolvedAddress ? (
                                                         <HashDisplay 
-                                                            label="Wallet Identity" 
+                                                            label="Owner Wallet Address" 
                                                             value={shortenAddress(resolvedAddress)} 
                                                             isBackup={false}
                                                         />
                                                     ) : (
                                                         <div className="flex flex-col gap-1">
-                                                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Wallet Identity</span>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Owner Wallet Address</span>
                                                             <span className="text-slate-500 italic text-[11px] bg-slate-900/50 px-3 py-2 rounded-xl border border-white/5 w-fit">Not recorded</span>
                                                         </div>
                                                     )}
@@ -315,17 +324,29 @@ const VerifyOwnership = () => {
                             )})}
                         </motion.div>
 
-                        <div className="pt-12 flex flex-col items-center gap-6 border-t border-white/5 mt-8">
-                            <QRCodeDisplay 
+                        <div className="pt-12 border-t border-white/5 mt-8">
+                            <QRModal 
+                                isOpen={showQRModal}
+                                onClose={() => setShowQRModal(false)}
                                 value={`${getVerifyPageURL()}?name=${encodeURIComponent(result.productName)}&id=${encodeURIComponent(productId)}&owner=${encodeURIComponent(result.ownerName)}&status=${(result.warrantyEnd * 1000 > Date.now()) ? 'Active' : 'Expired'}&valid=${encodeURIComponent(new Date(result.warrantyEnd * 1000).toLocaleDateString())}`} 
-                                title="Verification QR" 
+                                metadata={{ productName: result.productName, productId: productId }}
                             />
-                            <button
-                                onClick={() => generateCertificate({ ...result, productId, contractAddress: ContractAddress.Warranty })}
-                                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95 mt-2"
-                            >
-                                <Download size={20} /> Download Official Certificate
-                            </button>
+                            
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                                <button
+                                    onClick={() => setShowQRModal(true)}
+                                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all active:scale-95 w-full sm:w-auto font-black tracking-wide shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)]"
+                                >
+                                    <QrCode size={20} className="drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" /> Generate QR
+                                </button>
+                                
+                                <button
+                                    onClick={() => generateCertificate({ ...result, productId, contractAddress: ContractAddress.Warranty })}
+                                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all active:scale-95 w-full sm:w-auto font-black tracking-wide shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)]"
+                                >
+                                    <Download size={20} className="drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" /> Export PDF
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 )}

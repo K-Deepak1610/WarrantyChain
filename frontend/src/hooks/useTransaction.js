@@ -72,7 +72,7 @@ export const useTransaction = () => {
 
             // Human-friendly mapping for common obscure labels
             if (message.includes("Internal JSON-RPC error")) {
-                message = "Blockchain rejected this transaction. Likely a duplicate registration or invalid data.";
+                message = "Error: This Product ID or Serial Number has already been registered on the Ganache blockchain.";
             }
             if (message.includes("user rejected")) message = "Transaction cancelled by user.";
             if (message.includes("insufficient funds")) message = "Insufficient ETH for gas + value.";

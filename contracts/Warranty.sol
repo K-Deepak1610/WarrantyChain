@@ -7,15 +7,18 @@ contract Warranty {
         string productName;
         uint256 warrantyStart;
         uint256 warrantyEnd;
-        address ownerAddress;
+        address owner;
         string ownerName;
+        string ownerContact;
         string serialNumber;
+        string specifications;
         uint256 createdAt;
     }
 
     struct OwnershipRecord {
-        address ownerAddress;
+        address owner;
         string ownerName;
+        string ownerContact;
         uint256 transferDate;
     }
 
@@ -43,9 +46,11 @@ contract Warranty {
         uint256 _warrantyStart,
         uint256 _warrantyEnd,
         string memory _ownerName,
-        string memory _serialNumber
+        string memory _ownerContact,
+        string memory _serialNumber,
+        string memory _specifications
     ) public {
-        require(products[_productId].ownerAddress == address(0), "Product ID already registered");
+        require(products[_productId].owner == address(0), "Product ID already registered");
         require(!serialExists[_serialNumber], "Serial Number already registered");
         require(_warrantyEnd > _warrantyStart, "Invalid warranty dates");
 
@@ -54,9 +59,11 @@ contract Warranty {
             productName: _productName,
             warrantyStart: _warrantyStart,
             warrantyEnd: _warrantyEnd,
-            ownerAddress: msg.sender,
+            owner: msg.sender,
             ownerName: _ownerName,
+            ownerContact: _ownerContact,
             serialNumber: _serialNumber,
+            specifications: _specifications,
             createdAt: block.timestamp
         });
 
@@ -67,8 +74,9 @@ contract Warranty {
 
         // Add initial ownership record
         OwnershipRecord memory initialRecord = OwnershipRecord({
-            ownerAddress: msg.sender,
+            owner: msg.sender,
             ownerName: _ownerName,
+            ownerContact: _ownerContact,
             transferDate: block.timestamp
         });
         ownershipHistory[_productId].push(initialRecord);
@@ -91,6 +99,7 @@ contract Warranty {
     function getProduct(string memory _productId) public view returns (
         string memory name,
         string memory ownerName,
+        string memory ownerContact,
         address owner,
         uint256 start,
         uint256 end
@@ -100,7 +109,8 @@ contract Warranty {
         return (
             p.productName,
             p.ownerName,
-            p.ownerAddress,
+            p.ownerContact,
+            p.owner,
             p.warrantyStart,
             p.warrantyEnd
         );
@@ -112,8 +122,9 @@ contract Warranty {
         uint256 warrantyEnd,
         bool isValid,
         uint256 daysRemaining,
-        address ownerAddress,
-        string memory ownerName
+        address owner, // Renamed from ownerAddress for consistency
+        string memory ownerName,
+        string memory ownerContact
     ) {
         require(productExists[_productId], "Product not found");
         Product memory p = products[_productId];
@@ -131,20 +142,21 @@ contract Warranty {
             p.warrantyEnd,
             isWarrantyValid,
             remaining,
-            p.ownerAddress,
-            p.ownerName
+            p.owner,
+            p.ownerName,
+            p.ownerContact
         );
     }
 
     function verifyOwnership(string memory _productId) public view returns (
-        address ownerAddress,
+        address owner,
         string memory ownerName,
         OwnershipRecord[] memory history
     ) {
         require(productExists[_productId], "Product not found");
         Product memory p = products[_productId];
         return (
-            p.ownerAddress,
+            p.owner,
             p.ownerName,
             ownershipHistory[_productId]
         );
@@ -153,23 +165,26 @@ contract Warranty {
     function transferOwnership(
         string memory _productId,
         address _newOwner,
-        string memory _newOwnerName
+        string memory _newOwnerName,
+        string memory _newOwnerContact
     ) public {
         require(productExists[_productId], "Product not found");
         Product storage p = products[_productId];
         
-        require(msg.sender == p.ownerAddress, "Not the owner");
+        require(msg.sender == p.owner, "Not the owner");
         require(_newOwner != address(0), "Invalid new owner address");
 
-        address oldOwner = p.ownerAddress;
+        address oldOwner = p.owner;
         
-        p.ownerAddress = _newOwner;
+        p.owner = _newOwner;
         p.ownerName = _newOwnerName;
+        p.ownerContact = _newOwnerContact;
         
         // Add new ownership record
         OwnershipRecord memory newRecord = OwnershipRecord({
-            ownerAddress: _newOwner,
+            owner: _newOwner,
             ownerName: _newOwnerName,
+            ownerContact: _newOwnerContact,
             transferDate: block.timestamp
         });
         ownershipHistory[_productId].push(newRecord);

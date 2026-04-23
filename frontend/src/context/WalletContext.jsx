@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { ethers } from 'ethers';
 import WarrantyArtifact from '../contracts/Warranty.json';
 import ContractAddress from '../contracts/contract-address.json';
+import { shortenAddress } from '../utils/blockchain';
 
 const WalletContext = createContext();
 
@@ -182,6 +183,35 @@ export const WalletProvider = ({ children }) => {
         }
     };
 
+    const selectAccount = async () => {
+        let ethProvider = window.ethereum;
+        if (ethProvider?.providers) {
+            ethProvider = ethProvider.providers.find(p => p.isMetaMask) || ethProvider.providers[0];
+        }
+
+        if (!ethProvider) return;
+
+        try {
+            setLoading(true);
+            // This forces MetaMask to show the account selection screen
+            await ethProvider.request({
+                method: 'wallet_requestPermissions',
+                params: [{ eth_accounts: {} }]
+            });
+            
+            // After permissions are granted/updated, request accounts to get the new one
+            const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+            setAccount(accounts[0]);
+            
+            const browserProvider = getBrowserProvider(ethProvider);
+            await attachSigner(accounts[0], browserProvider);
+        } catch (error) {
+            console.error("Account selection error:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const contextValue = React.useMemo(() => ({
         account,
         contract,
@@ -189,6 +219,8 @@ export const WalletProvider = ({ children }) => {
         signer,
         connectWallet,
         disconnectWallet,
+        selectAccount,
+        shortenAddress,
         loading,
         isConnected: !!account,
         contractError

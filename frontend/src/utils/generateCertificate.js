@@ -14,102 +14,122 @@ export const generateCertificate = async (productData) => {
         isValid,
         daysRemaining,
         ownerName,
-        ownerAddress,
+        owner,
         ownerContact,
         contractAddress,
-        network = "Hardhat Localhost"
+        network = "Ganache Blockchain"
     } = productData;
 
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+    });
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
-    let yPos = 20;
+    const col2X = margin + 60;
+    let yPos = 25;
 
-    // Helper for sections
-    const addSectionTitle = (title) => {
+    // --- 🖋 HEADER SECTION ---
+    doc.setTextColor(0, 51, 102); // Navy Blue
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("WARRANTYCHAIN VERIFICATION CERTIFICATE", margin, yPos);
+    
+    yPos += 5;
+    doc.setDrawColor(0, 51, 102);
+    doc.setLineWidth(1.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    
+    yPos += 15;
+
+    // --- 🔧 HELPER FUNCTIONS ---
+    const addSectionHeader = (title) => {
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(50, 50, 50);
-        yPos += 15;
-        doc.text(title, margin, yPos);
-        yPos += 5;
+        doc.setFontSize(13);
+        doc.setTextColor(40, 40, 40);
+        doc.text(title.toUpperCase(), margin, yPos);
+        yPos += 2;
         doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
         doc.line(margin, yPos, pageWidth - margin, yPos);
         yPos += 10;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(80, 80, 80);
     };
 
-    const addField = (label, value) => {
+    const addDataRow = (label, value, isMonospace = false) => {
         doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
         doc.text(`${label}:`, margin, yPos);
-        doc.setFont("helvetica", "normal");
-        doc.text(String(value), margin + 50, yPos);
+        
+        doc.setFont(isMonospace ? "courier" : "helvetica", "normal");
+        doc.setTextColor(40, 40, 40);
+        doc.text(String(value || "N/A"), col2X, yPos);
         yPos += 8;
     };
 
-    // Title
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor(0, 51, 102);
-    const title = "WARRANTYCHAIN VERIFICATION CERTIFICATE";
-    const titleWidth = doc.getTextWidth(title);
-    doc.text(title, (pageWidth - titleWidth) / 2, yPos);
+    // --- 1. PRODUCT DETAILS ---
+    addSectionHeader("PRODUCT DETAILS");
+    addDataRow("Product Name", productName);
+    addDataRow("Product ID", productId);
+    addDataRow("Warranty Start", warrantyStart ? new Date(warrantyStart * 1000).toLocaleDateString() : "N/A");
+    addDataRow("Warranty End", warrantyEnd ? new Date(warrantyEnd * 1000).toLocaleDateString() : "N/A");
 
     yPos += 10;
-    doc.setLineWidth(1);
-    doc.setDrawColor(0, 51, 102);
-    doc.line(margin, yPos, pageWidth - margin, yPos);
 
-    // Product Section
-    addSectionTitle("PRODUCT DETAILS");
-    addField("Product Name", productName || "N/A");
-    addField("Product ID", productId || "N/A");
-    addField("Warranty Start", warrantyStart ? new Date(warrantyStart * 1000).toLocaleDateString() : "N/A");
-    addField("Warranty End", warrantyEnd ? new Date(warrantyEnd * 1000).toLocaleDateString() : "N/A");
+    // --- 2. OWNER INFORMATION ---
+    addSectionHeader("OWNER INFORMATION");
+    addDataRow("Owner Name", ownerName);
+    addDataRow("Owner Address", owner, true);
+    addDataRow("Owner Contact", ownerContact || "Not Provided");
 
-    // Owner Section
-    addSectionTitle("OWNER INFORMATION");
-    addField("Owner Name", ownerName || "N/A");
-    addField("Owner Address", ownerAddress || "N/A");
-    addField("Owner Contact", ownerContact || "N/A");
+    yPos += 10;
 
-    // Warranty Section
-    addSectionTitle("WARRANTY STATUS");
-    const status = isValid ? "VALID" : "EXPIRED";
+    // --- 3. WARRANTY STATUS ---
+    const statusStartY = yPos;
+    addSectionHeader("WARRANTY STATUS");
+    
     doc.setFont("helvetica", "bold");
-    if (isValid) {
-        doc.setTextColor(0, 150, 0); // Green
-    } else {
-        doc.setTextColor(200, 0, 0); // Red
-    }
-    addField("Status", status);
-    doc.setTextColor(80, 80, 80);
-    addField("Days Remaining", daysRemaining !== undefined ? daysRemaining : "N/A");
+    doc.setFontSize(10);
+    doc.setTextColor(22, 163, 74); // Success Green label
+    doc.text("Status:", margin, yPos);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text(isValid ? "VALID" : "EXPIRED", col2X, yPos);
+    
+    yPos += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(60, 60, 60);
+    doc.text("Days Remaining:", margin, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(daysRemaining), col2X, yPos);
 
-    // Blockchain Section
-    addSectionTitle("BLOCKCHAIN RECORD");
-    addField("Contract Address", contractAddress || "N/A");
-    addField("Network", network);
-    addField("Verification Time", new Date().toLocaleString());
-
-    // QR Code
+    // QR Code for status section (Right-aligned)
     try {
+        const qrSize = 40;
         const verificationLink = `${window.location.origin}/verify/${productId}`;
         const qrBase64 = await QRCode.toDataURL(verificationLink);
-        const qrSize = 40;
-        doc.addImage(qrBase64, "PNG", pageWidth - margin - qrSize, yPos - 100, qrSize, qrSize);
+        doc.addImage(qrBase64, "PNG", pageWidth - margin - qrSize, statusStartY + 5, qrSize, qrSize);
     } catch (err) {
-        console.error("Could not generate QR code for PDF", err);
+        console.error("QR Code failed", err);
     }
 
-    // Footer
-    doc.setFontSize(9);
-    doc.setTextColor(150, 150, 150);
-    const footer = "This is a blockchain-verified document generated by WarrantyChain System.";
-    doc.text(footer, (pageWidth - doc.getTextWidth(footer)) / 2, 285);
+    yPos += 20;
 
-    // Save PDF
-    doc.save(`WarrantyChain-Certificate-${productId || "Unknown"}.pdf`);
+    // --- 4. BLOCKCHAIN RECORD ---
+    addSectionHeader("BLOCKCHAIN RECORD");
+    addDataRow("Contract Address", contractAddress, true);
+    addDataRow("Network", network);
+    addDataRow("Verification Time", new Date().toLocaleString());
+
+    // --- 5. FOOTER ---
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.setFont("helvetica", "normal");
+    const footerText = "This certificate is cryptographically secured and immutable.";
+    doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: "center" });
+
+    // --- 🚀 SAVE ---
+    doc.save(`WarrantyChain_Verification_${productId || "Data"}.pdf`);
 };

@@ -27,27 +27,30 @@ async function main() {
     );
     console.log("Artifacts and address saved to frontend/src/contracts");
 
-    // 3. Register a test product
-    const productId = "TEST-QR-SCANNED";
-    console.log(`Registering test product: ${productId}...`);
+    // 3. Register test products
+    const products = [
+        { id: "IP001", name: "iPhone 17 Pro Max", ownerName: "John Doe" },
+        { id: "DL002", name: "Dell XPS 15 Ultra", ownerName: "Jane Smith" }
+    ];
 
-    // Using the first signer (default Hardhat account)
     const [deployer] = await hre.ethers.getSigners();
-
     const now = Math.floor(Date.now() / 1000);
     const oneYear = 365 * 24 * 60 * 60;
 
-    const tx = await warranty.registerProduct(
-        productId,
-        "Premium Quantum Laptop",
-        now,
-        now + oneYear,
-        "John Doe",
-        "john.doe@example.com"
-    );
-    await tx.wait();
+    for (const p of products) {
+        console.log(`Registering test product: ${p.id}...`);
+        const tx = await warranty.registerProduct(
+            p.id,
+            p.name,
+            now,
+            now + oneYear,
+            p.ownerName,
+            "SER-SN-" + p.id
+        );
+        await tx.wait();
+    }
 
-    console.log("Test product registered successfully.");
+    console.log("Test products registered successfully.");
     console.log("Deployment and seeding complete.");
 }
 

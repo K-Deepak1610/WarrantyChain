@@ -23,7 +23,8 @@ const Register = () => {
         warrantyEnd: "",
         ownerName: "",
         ownerContact: "",
-        serialNumber: ""
+        serialNumber: "",
+        specifications: ""
     });
     const [showBurst, setShowBurst] = useState(false);
 
@@ -79,14 +80,16 @@ const Register = () => {
         reset();
         if (stage === 'success') {
             setFormData({
-                id: "", name: "", warrantyStart: "", warrantyEnd: "", ownerName: "", ownerContact: "", serialNumber: ""
+                id: "", name: "", warrantyStart: "", warrantyEnd: "", ownerName: "", ownerContact: "", serialNumber: "", specifications: ""
             });
         }
     };
 
     return (
         <div className="pt-24 pb-12 px-6 max-w-4xl mx-auto relative">
-            <BackToDashboardButton />
+            <div className="mb-8">
+                <BackToDashboardButton />
+            </div>
             
             <TransactionModal 
                 stage={stage}
@@ -151,7 +154,7 @@ const Register = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Warranty Start</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Warranty Register</label>
                                     <input
                                         name="warrantyStart" type="date" required
                                         value={formData.warrantyStart}
@@ -160,7 +163,7 @@ const Register = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Warranty End</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Warranty Expiry</label>
                                     <input
                                         name="warrantyEnd" type="date" required
                                         value={formData.warrantyEnd}
@@ -170,23 +173,34 @@ const Register = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Full Name</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Name</label>
                                 <input
                                     name="ownerName" required
                                     value={formData.ownerName}
                                     className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                    placeholder="Enter the name"
+                                    placeholder="Enter the owner name"
                                     onChange={handleChange}
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Phone Number</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Contact</label>
                                 <input
                                     name="ownerContact" required
                                     value={formData.ownerContact}
                                     className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                    placeholder="Enter the phone number"
+                                    placeholder="Enter contact number"
                                     onChange={handleChange}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Specifications (Color, Model, etc.)</label>
+                                <textarea
+                                    name="specifications"
+                                    value={formData.specifications}
+                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
+                                    placeholder="e.g. Color: Space Gray, Model: M3 Pro"
+                                    onChange={handleChange}
+                                    rows="2"
                                 />
                             </div>
 

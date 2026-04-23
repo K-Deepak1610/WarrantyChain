@@ -24,9 +24,17 @@ const ProductCard = ({ product }) => {
                     <h3 className="text-xl font-bold text-white tracking-tight leading-none mb-2 truncate group-hover:text-cyan-400 transition-colors">
                         {product.name}
                     </h3>
-                    <div className="flex items-center gap-1.5 opacity-50">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">ID:</span>
-                        <span className="text-xs font-mono text-slate-300">{product.id}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">ID:</span>
+                        <span className="text-[11px] text-cyan-400 font-black font-mono bg-cyan-400/5 px-2 py-0.5 rounded border border-cyan-400/10 tracking-widest uppercase">
+                            {product.id}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">SN:</span>
+                        <span className="text-[10px] text-indigo-400/80 font-bold font-mono">
+                            {product.serialNumber || "N/A"}
+                        </span>
                     </div>
                 </div>
                 <div className={`p-2.5 rounded-2xl border ${isExpired ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`}>
@@ -62,10 +70,20 @@ const ProductCard = ({ product }) => {
                         ? 'bg-red-950/30 border-red-900/50 text-red-400' 
                         : 'bg-emerald-950/30 border-emerald-900/50 text-emerald-400'}`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-red-500' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse'}`} />
-                    {isExpired ? 'Warranty Expired ❌' : 'Warranty Active ✅'}
+                    {isExpired ? 'Warranty Expired' : 'Warranty Active'}
                 </div>
             </div>
-
+            
+            {/* Specifications Section */}
+            {product.specifications && (
+                <div className="mb-6 px-4 py-3 rounded-xl bg-white/5 border border-white/5 group-hover:border-indigo-500/20 transition-colors">
+                    <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest mb-1">Specifications</p>
+                    <p className="text-xs text-slate-300 font-medium italic line-clamp-2">
+                        "{product.specifications}"
+                    </p>
+                </div>
+            )}
+            
             {/* Bottom Section: Owner Info */}
             <div className="mt-auto pt-5 border-t border-white/5 space-y-3">
                 <div className="flex items-center justify-between group/line">
@@ -74,8 +92,8 @@ const ProductCard = ({ product }) => {
                             <User size={14} />
                         </div>
                         <div>
-                            <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest leading-none mb-1">Owner Name</p>
-                            <p className="text-sm font-bold text-slate-200 group-hover/line:text-white transition-colors capitalize">{product.ownerName}</p>
+                            <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest leading-none mb-1">Owner: {product.ownerName}</p>
+                            <p className="text-sm font-bold text-slate-200 group-hover/line:text-white transition-colors">{product.ownerContact || "No Contact"}</p>
                         </div>
                     </div>
                 </div>
@@ -87,7 +105,7 @@ const ProductCard = ({ product }) => {
                         </div>
                         <div>
                             <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest leading-none mb-1">Wallet Address</p>
-                            <p className="text-xs font-mono text-cyan-400/80 group-hover/line:text-cyan-400 transition-colors">{shortenAddress(product.ownerAddress)}</p>
+                            <p className="text-xs font-mono text-cyan-400/80 group-hover/line:text-cyan-400 transition-colors">{shortenAddress(product.owner)}</p>
                         </div>
                     </div>
                 </div>

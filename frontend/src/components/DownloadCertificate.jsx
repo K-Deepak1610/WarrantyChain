@@ -144,7 +144,7 @@ const DownloadCertificate = ({ data, type = 'warranty' }) => {
                                     <p className="font-bold text-lg text-slate-800">{data.ownerName}</p>
                                     <p className="text-slate-500 text-sm">{data.ownerContact}</p>
                                     <div className="mt-2 pt-2 border-t border-slate-100">
-                                        <p className="font-mono text-xs text-slate-400 break-all">{data.ownerAddress}</p>
+                                        <p className="font-mono text-xs text-slate-400 break-all">{data.owner}</p>
                                     </div>
                                 </div>
 

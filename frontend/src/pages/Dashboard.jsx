@@ -58,6 +58,12 @@ const Dashboard = () => {
         }
     };
 
+    const sortedProducts = useMemo(() => {
+        return [...products].sort((a, b) => 
+            a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' })
+        );
+    }, [products]);
+
     const activeProducts = useMemo(() => {
         const now = Date.now() / 1000;
         return products.filter(p => p.warrantyEnd > now);
@@ -65,7 +71,9 @@ const Dashboard = () => {
 
     return (
         <div className="pt-24 pb-16 px-6 max-w-7xl mx-auto space-y-10 relative">
-            <BackToHomeButton />
+            <div className="mb-2">
+                <BackToHomeButton />
+            </div>
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -171,7 +179,7 @@ const Dashboard = () => {
                             }}
                             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 w-full"
                         >
-                            {products.map(p => (
+                            {sortedProducts.map(p => (
                                 <ProductCard key={p.id} product={p} />
                             ))}
                         </motion.div>

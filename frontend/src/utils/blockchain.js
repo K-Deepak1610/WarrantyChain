@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 
 // Helper to shorten address
 export const shortenAddress = (address) => {
+    if (!address) return "0x000...0000";
     return `${address.slice(0, 5)}...${address.slice(address.length - 4)}`;
 };
 
@@ -17,10 +18,10 @@ export const registerProduct = async (contract, productDetails) => {
             BigInt(productDetails.warrantyStart),
             BigInt(productDetails.warrantyEnd),
             productDetails.ownerName,
-            productDetails.serialNumber
+            productDetails.ownerContact,
+            productDetails.serialNumber,
+            productDetails.specifications
         );
-        // We no longer await tx.wait() here. 
-        // The UI will handle the mining state.
         return tx;
     } catch (error) {
         console.error("Error registering product:", error);
@@ -33,15 +34,15 @@ export const verifyWarranty = async (contract, productId) => {
         if (!contract) throw new Error("Contract not initialized");
         const result = await contract.verifyWarranty(productId);
 
-        // Destructure and format
         return {
             productName: result[0],
             warrantyStart: Number(result[1]),
             warrantyEnd: Number(result[2]),
             isValid: result[3],
             daysRemaining: Number(result[4]),
-            ownerAddress: result[5],
-            ownerName: result[6]
+            owner: result[5],
+            ownerName: result[6],
+            ownerContact: result[7]
         };
     } catch (error) {
         console.error("Error verifying warranty:", error);
@@ -54,16 +55,15 @@ export const verifyOwnership = async (contract, productId) => {
         if (!contract) throw new Error("Contract not initialized");
         const result = await contract.verifyOwnership(productId);
 
-        // Result[2] is now an array of structs (tuples)
-        // We need to map them to JS objects
         const history = result[2].map(record => ({
-            ownerAddress: record[0],
+            owner: record[0],
             ownerName: record[1],
-            transferDate: Number(record[2])
+            ownerContact: record[2],
+            transferDate: Number(record[3])
         }));
 
         return {
-            ownerAddress: result[0],
+            owner: result[0],
             ownerName: result[1],
             history: history
         };
@@ -73,16 +73,15 @@ export const verifyOwnership = async (contract, productId) => {
     }
 };
 
-export const transferOwnership = async (contract, productId, newOwner, newOwnerName) => {
+export const transferOwnership = async (contract, productId, newOwner, newOwnerName, newOwnerContact) => {
     try {
         if (!contract) throw new Error("Contract not initialized");
         const tx = await contract.transferOwnership(
             productId,
             newOwner,
-            newOwnerName
+            newOwnerName,
+            newOwnerContact
         );
-        // We no longer await tx.wait() here.
-        // The UI will handle the mining state.
         return tx;
     } catch (error) {
         console.error("Error transferring ownership:", error);
@@ -99,7 +98,10 @@ export const getAllProducts = async (contract) => {
             id: p.productId,
             name: p.productName,
             ownerName: p.ownerName,
-            ownerAddress: p.ownerAddress,
+            ownerContact: p.ownerContact,
+            owner: p.owner,
+            serialNumber: p.serialNumber,
+            specifications: p.specifications,
             warrantyStart: Number(p.warrantyStart),
             warrantyEnd: Number(p.warrantyEnd)
         }));
