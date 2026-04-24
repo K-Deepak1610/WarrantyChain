@@ -5,7 +5,7 @@ export const CONFIG = {
     BASE_URL: "",
     
     // RPC Endpoint for read-only blockchain access (Local Hardhat Node)
-    RPC_URL: "http://127.0.0.1:8545",
+    RPC_URL: "http://127.0.0.1:7545",
 
     // Static Verification Page URL (GitHub Pages or similar)
     // Example: "https://yourname.github.io/WarrantyChain/verify.html"

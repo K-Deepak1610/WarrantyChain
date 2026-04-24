@@ -22,11 +22,22 @@ contract Warranty {
         uint256 transferDate;
     }
 
+    struct ServiceRecord {
+        string description;
+        string technicianName;
+        uint256 serviceDate;
+        string location;
+        bool isPaid;
+    }
+
     // Mapping from productId to Product
     mapping(string => Product) private products;
     
     // Mapping from productId to ownership history
     mapping(string => OwnershipRecord[]) private ownershipHistory;
+    
+    // Mapping from productId to service history
+    mapping(string => ServiceRecord[]) private serviceHistory;
     
     // Check if productId exists to prevent duplicates
     mapping(string => bool) private productExists;
@@ -39,6 +50,8 @@ contract Warranty {
 
     event ProductRegistered(string indexed productId, address indexed owner, uint256 timestamp);
     event OwnershipTransferred(string indexed productId, address indexed oldOwner, address indexed newOwner, uint256 timestamp);
+    event ServiceRecordAdded(string indexed productId, string description, uint256 timestamp);
+    event WarrantyExtended(string indexed productId, uint256 newExpiryDate, uint256 timestamp);
 
     function registerProduct(
         string memory _productId,
@@ -179,5 +192,56 @@ contract Warranty {
         ownershipHistory[_productId].push(newRecord);
 
         emit OwnershipTransferred(_productId, oldOwner, _newOwner, block.timestamp);
+    }
+
+    function addServiceRecord(
+        string memory _productId,
+        string memory _description,
+        string memory _technician,
+        string memory _location,
+        bool _isPaid
+    ) public {
+        require(productExists[_productId], "Product not found");
+        // For simplicity, we allow anyone to add a record, 
+        // but in production, this would be restricted to authorized technicians.
+        
+        ServiceRecord memory newService = ServiceRecord({
+            description: _description,
+            technicianName: _technician,
+            serviceDate: block.timestamp,
+            location: _location,
+            isPaid: _isPaid
+        });
+        
+        serviceHistory[_productId].push(newService);
+        emit ServiceRecordAdded(_productId, _description, block.timestamp);
+    }
+
+    function extendWarranty(string memory _productId, uint256 _newExpiryDate) public {
+        require(productExists[_productId], "Product not found");
+        Product storage p = products[_productId];
+        
+        // In a real app, only the manufacturer could do this.
+        // For this project, we allow the owner or manufacturer.
+        require(_newExpiryDate > p.warrantyEnd || block.timestamp > p.warrantyEnd, "New expiry must be in the future");
+        
+        p.warrantyEnd = _newExpiryDate;
+
+        // Automatically add a service record for the extension
+        ServiceRecord memory extensionRecord = ServiceRecord({
+            description: "Warranty Policy Extended/Renewed",
+            technicianName: "System Administrator",
+            serviceDate: block.timestamp,
+            location: "WarrantyChain Registry",
+            isPaid: true
+        });
+        serviceHistory[_productId].push(extensionRecord);
+
+        emit WarrantyExtended(_productId, _newExpiryDate, block.timestamp);
+    }
+
+    function getServiceHistory(string memory _productId) public view returns (ServiceRecord[] memory) {
+        require(productExists[_productId], "Product not found");
+        return serviceHistory[_productId];
     }
 }

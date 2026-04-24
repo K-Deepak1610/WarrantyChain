@@ -9,15 +9,15 @@ import QRCodeDisplay from '../components/QRCodeDisplay';
 import QRModal from '../components/QRModal';
 import DownloadCertificate from '../components/DownloadCertificate';
 import HashDisplay from '../components/HashDisplay';
-import { verifyWarranty, shortenAddress } from '../utils/blockchain';
+import { verifyWarranty, verifyOwnership, getServiceHistory, shortenAddress } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
 import WarrantyArtifact from '../contracts/Warranty.json';
-import { Search, CheckCircle, XCircle, QrCode, User, Calendar, Clock, Download, Settings, RefreshCcw, Cpu, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle, XCircle, QrCode, User, Calendar, Clock, Download, Settings, RefreshCcw, Cpu, ShieldCheck, Loader2, AlertCircle, Wrench, MapPin, CheckCircle2 } from 'lucide-react';
 import { useProductLookup } from '../hooks/useProductLookup';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { getBaseURL, getVerifyPageURL } from '../config';
+import { getBaseURL, getVerifyPageURL, CONFIG } from '../config';
 
 const VerifyWarranty = () => {
     usePageTitle('Verify Warranty');
@@ -42,7 +42,7 @@ const VerifyWarranty = () => {
                 return new ethers.Contract(ContractAddress.Warranty, WarrantyArtifact.abi, provider);
             } else {
                 // Public RPC fallback for users without MetaMask
-                const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+                const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
                 return new ethers.Contract(ContractAddress.Warranty, WarrantyArtifact.abi, provider);
             }
         } catch (e) {
@@ -88,11 +88,12 @@ const VerifyWarranty = () => {
                 throw new Error("Cannot connect to blockchain. Please connect wallet.");
             }
 
-            const [data, ownership] = await Promise.all([
+            const [data, ownership, services] = await Promise.all([
                 verifyWarranty(activeContract, targetId),
-                verifyOwnership(activeContract, targetId).catch(() => ({}))
+                verifyOwnership(activeContract, targetId).catch(() => ({ history: [] })),
+                getServiceHistory(activeContract, targetId).catch(() => [])
             ]);
-            setResult({ ...data, history: ownership.history });
+            setResult({ ...data, history: ownership.history, services: services });
         } catch (err) {
             console.warn("Blockchain read failed.", err);
             setError("Product not found on the blockchain.");
@@ -318,13 +319,106 @@ const VerifyWarranty = () => {
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20"><Clock className="text-red-400" size={18} /></div>
-                                                <div>
-                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Warranty Expiry</p>
+                                                <div className="relative">
+                                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                                        Warranty Expiry
+                                                        {result.services && result.services.some(s => s.description.includes("Extended")) && (
+                                                            <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-[8px] font-bold animate-pulse">EXTENDED</span>
+                                                        )}
+                                                    </p>
                                                     <p className="text-slate-100 text-sm font-mono">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Product Specifications Section */}
+                                    {(() => {
+                                        let parsedSpecs = null;
+                                        let category = null;
+                                        try {
+                                            if (result.specifications) {
+                                                const data = JSON.parse(result.specifications);
+                                                if (data.specs) parsedSpecs = data.specs;
+                                                if (data.category) category = data.category;
+                                            }
+                                        } catch (e) {}
+
+                                        const hasSpecs = (parsedSpecs && Object.keys(parsedSpecs).length > 0) || (result.specifications && result.specifications.trim() && !result.specifications.startsWith('{'));
+
+                                        if (!hasSpecs && !result.serialNumber) return null;
+
+                                        return (
+                                            <div className="bg-slate-900/40 rounded-3xl p-6 border border-indigo-500/10 space-y-4">
+                                                <h3 className="text-lg font-bold text-indigo-300 border-b border-indigo-500/10 pb-2 flex items-center gap-2">
+                                                    <Settings size={18} /> Product Specifications
+                                                </h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                                                    {result.serialNumber && (
+                                                        <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                                            <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Serial Number</span>
+                                                            <span className="text-white font-mono text-xs">{result.serialNumber}</span>
+                                                        </div>
+                                                    )}
+                                                    {category && category !== "Other" && (
+                                                        <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                                            <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Category</span>
+                                                            <span className="text-white font-medium text-xs bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{category}</span>
+                                                        </div>
+                                                    )}
+                                                    {parsedSpecs ? (
+                                                        Object.entries(parsedSpecs).map(([key, value]) => (
+                                                            <div key={key} className="flex justify-between items-center py-2 border-b border-white/5">
+                                                                <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest">{key}</span>
+                                                                <span className="text-white font-medium text-xs">{value}</span>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        result.specifications && result.specifications.trim() && !result.specifications.startsWith('{') && (
+                                                            <div className="col-span-2">
+                                                                <p className="text-slate-400 text-sm leading-relaxed">{result.specifications}</p>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Service History Timeline */}
+                                    {result.services && result.services.length > 0 && (
+                                        <div className="bg-slate-900/40 rounded-3xl p-6 border border-cyan-500/10 space-y-4">
+                                            <h3 className="text-lg font-bold text-cyan-300 border-b border-cyan-500/10 pb-2 flex items-center gap-2">
+                                                <Wrench size={18} /> Maintenance History
+                                            </h3>
+                                            <div className="space-y-6 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-px before:bg-white/5">
+                                                {result.services.map((service, index) => (
+                                                    <div key={index} className="relative pl-10 group">
+                                                        <div className="absolute left-2.5 top-1.5 w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)] group-hover:scale-125 transition-transform" />
+                                                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 hover:bg-white/10 transition-all">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="flex items-center gap-1.5 text-emerald-400 text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 w-fit mb-1">
+                                                                        <CheckCircle2 size={10} /> Verified Service
+                                                                    </div>
+                                                                    <h4 className="text-white font-bold text-sm">{service.description}</h4>
+                                                                </div>
+                                                                <span className="text-[10px] text-slate-500 font-mono">{new Date(service.serviceDate * 1000).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <div className="flex gap-4 text-[10px] text-slate-400">
+                                                                <div className="flex items-center gap-1">
+                                                                    <User size={10} /> {service.technicianName}
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <MapPin size={10} /> {service.location}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-3xl p-6 border border-indigo-500/20 space-y-4">
                                         <h3 className="text-lg font-bold text-indigo-300 border-b border-indigo-500/20 pb-2 flex items-center gap-2">

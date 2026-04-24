@@ -79,7 +79,15 @@ const ProductCard = ({ product }) => {
                 <div className="mb-6 px-4 py-3 rounded-xl bg-white/5 border border-white/5 group-hover:border-indigo-500/20 transition-colors">
                     <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest mb-1">Specifications</p>
                     <p className="text-xs text-slate-300 font-medium italic line-clamp-4">
-                        "{product.specifications}"
+                        {(() => {
+                            try {
+                                const data = JSON.parse(product.specifications);
+                                if (data.specs) {
+                                    return Object.entries(data.specs).map(([k, v]) => `${k}: ${v}`).join(", ");
+                                }
+                            } catch (e) {}
+                            return product.specifications;
+                        })()}
                     </p>
                 </div>
             )}

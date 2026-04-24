@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import DashboardCard from '../components/DashboardCard';
 import BackToHomeButton from '../components/BackToHomeButton';
-import { PlusCircle, CheckCircle, Shield, RefreshCw, Wifi, Database, Copy, Check, TrendingUp, Package } from 'lucide-react';
+import { PlusCircle, CheckCircle, Shield, RefreshCw, Wifi, Database, Copy, Check, TrendingUp, Package, Settings } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { shortenAddress, getAllProducts } from '../utils/blockchain';
 import ProductCard from '../components/ProductCard';
@@ -144,11 +144,12 @@ const Dashboard = () => {
                         <span className="w-1 h-5 bg-gradient-to-b from-cyan-400 to-indigo-400 rounded-full inline-block" />
                         Quick Actions
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
                         <DashboardCard title="Register" icon={PlusCircle} to="/register" color="blue" />
                         <DashboardCard title="Verify Warranty" icon={CheckCircle} to="/verify-warranty" color="green" />
                         <DashboardCard title="Verify Ownership" icon={Shield} to="/verify-ownership" color="purple" />
                         <DashboardCard title="Transfer" icon={RefreshCw} to="/transfer-ownership" color="orange" />
+                        <DashboardCard title="Manage" icon={Settings} to="/manage-product" color="cyan" />
                     </div>
                 </div>
 

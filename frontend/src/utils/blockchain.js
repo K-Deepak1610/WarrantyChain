@@ -112,3 +112,43 @@ export const getAllProducts = async (contract) => {
         throw error;
     }
 };
+
+export const addServiceRecord = async (contract, productId, description, technician, location, isPaid) => {
+    try {
+        if (!contract) throw new Error("Contract not initialized");
+        const tx = await contract.addServiceRecord(productId, description, technician, location, isPaid);
+        return tx;
+    } catch (error) {
+        console.error("Error adding service record:", error);
+        throw error;
+    }
+};
+
+export const extendWarranty = async (contract, productId, newExpiryDate) => {
+    try {
+        if (!contract) throw new Error("Contract not initialized");
+        const tx = await contract.extendWarranty(productId, BigInt(newExpiryDate));
+        return tx;
+    } catch (error) {
+        console.error("Error extending warranty:", error);
+        throw error;
+    }
+};
+
+export const getServiceHistory = async (contract, productId) => {
+    try {
+        if (!contract) throw new Error("Contract not initialized");
+        const rawHistory = await contract.getServiceHistory(productId);
+        
+        return rawHistory.map(record => ({
+            description: record[0],
+            technicianName: record[1],
+            serviceDate: Number(record[2]),
+            location: record[3],
+            isPaid: record[4]
+        }));
+    } catch (error) {
+        console.error("Error fetching service history:", error);
+        throw error;
+    }
+};

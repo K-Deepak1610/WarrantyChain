@@ -6,6 +6,7 @@ const cardMeta = {
     green:  { border: 'border-emerald-500/30', glow: 'shadow-emerald-500/20', badge: 'from-emerald-500 to-green-400', dot: 'bg-emerald-400', desc: 'Check if a product warranty is still active' },
     purple: { border: 'border-purple-500/30', glow: 'shadow-purple-500/20', badge: 'from-purple-500 to-pink-500',  dot: 'bg-purple-400', desc: 'View the full ownership transfer history' },
     orange: { border: 'border-orange-500/30', glow: 'shadow-orange-500/20', badge: 'from-orange-500 to-yellow-400', dot: 'bg-orange-400', desc: 'Transfer ownership to a new wallet address' },
+    cyan:   { border: 'border-cyan-500/30',   glow: 'shadow-cyan-500/20',   badge: 'from-cyan-500 to-blue-400',   dot: 'bg-cyan-400',   desc: 'Update service records and extend product warranty' },
 };
 
 const DashboardCard = ({ title, icon: Icon, to, color = 'blue' }) => {

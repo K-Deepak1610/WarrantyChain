@@ -8,6 +8,7 @@ import PublicVerify from './pages/PublicVerify';
 import Register from './pages/Register';
 import VerifyWarranty from './pages/VerifyWarranty';
 import VerifyOwnership from './pages/VerifyOwnership';
+import ManageProduct from './pages/ManageProduct';
 import { WalletProvider, useWallet } from './context/WalletContext';
 import LiveTicker from './components/LiveTicker';
 import CommandPalette from './components/CommandPalette';
@@ -43,6 +44,7 @@ const AppContent = () => {
                         {/* Protected Features */}
                         <Route path="/register" element={<ProtectedRoute><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><Register /></motion.div></ProtectedRoute>} />
                         <Route path="/transfer-ownership" element={<ProtectedRoute><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><TransferOwnership /></motion.div></ProtectedRoute>} />
+                        <Route path="/manage-product" element={<ProtectedRoute><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><ManageProduct /></motion.div></ProtectedRoute>} />
 
                         {/* Public Features */}
                         <Route path="/verify-warranty" element={<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3 }}><VerifyWarranty /></motion.div>} />
