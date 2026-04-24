@@ -24,12 +24,12 @@ const ManageProduct = () => {
     const [serviceData, setServiceData] = useState({
         description: "",
         technician: "",
-        location: "",
-        isPaid: false
+        location: ""
     });
 
     // Warranty Form State
     const [newExpiry, setNewExpiry] = useState("");
+    const [isPaid, setIsPaid] = useState(false);
 
     // Live Product Lookup
     const { productName, isSearching, error: lookupError } = useProductLookup(contract, productId);
@@ -48,7 +48,7 @@ const ManageProduct = () => {
         } catch (e) { console.warn("Owner lookup failed", e); }
 
         await execute(
-            addServiceRecord(contract, productId, serviceData.description, serviceData.technician, serviceData.location, serviceData.isPaid),
+            addServiceRecord(contract, productId, serviceData.description, serviceData.technician, serviceData.location, true),
             {
                 action: "Added Service Record",
                 productName: productName || "Product",
@@ -87,8 +87,9 @@ const ManageProduct = () => {
     const handleReset = () => {
         reset();
         if (stage === 'success') {
-            setServiceData({ description: "", technician: "", location: "", isPaid: false });
+            setServiceData({ description: "", technician: "", location: "" });
             setNewExpiry("");
+            setIsPaid(false);
         }
     };
 
@@ -205,25 +206,14 @@ const ManageProduct = () => {
                                             <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Payment Status</label>
-                                        <button
-                                            type="button"
-                                            onClick={() => setServiceData({ ...serviceData, isPaid: !serviceData.isPaid })}
-                                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${serviceData.isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}
-                                        >
-                                            <span className="text-sm font-bold uppercase tracking-wide">{serviceData.isPaid ? "Payment Received" : "Awaiting Payment"}</span>
-                                            {serviceData.isPaid ? <CheckCircle2 size={18} /> : <Clock size={18} />}
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
 
                             <AnimatedButton
-                                text={stage === 'processing' ? "Submitting to Ledger..." : !serviceData.isPaid ? "Payment Required to Log" : "Log Service Record"}
-                                disabled={stage !== 'idle' || !productId || !serviceData.isPaid}
+                                text={stage === 'processing' ? "Submitting to Ledger..." : "Log Service Record"}
+                                disabled={stage !== 'idle' || !productId}
                                 icon={ShieldCheck}
-                                className={`w-full py-5 text-lg ${!serviceData.isPaid ? 'bg-slate-800 border-red-500/20 text-red-500/50 cursor-not-allowed' : 'bg-slate-900 border-cyan-500/30 text-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]'}`}
+                                className="w-full py-5 text-lg bg-slate-900 border-cyan-500/30 text-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]"
                                 type="submit"
                             />
                         </form>
@@ -248,6 +238,23 @@ const ManageProduct = () => {
                                         />
                                     </div>
                                 </div>
+
+                                <div className="space-y-2 mt-4 px-4">
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Renewal Payment Status</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsPaid(!isPaid)}
+                                        className={`w-full flex items-center justify-between p-5 rounded-3xl border transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {isPaid ? <CheckCircle2 size={24} /> : <Clock size={24} />}
+                                            <span className="text-lg font-black uppercase tracking-tight">{isPaid ? "Renewal Paid" : "Awaiting Renewal Payment"}</span>
+                                        </div>
+                                        <div className={`px-4 py-1 rounded-full text-[10px] font-black uppercase ${isPaid ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                                            {isPaid ? "CONFIRMED" : "REQUIRED"}
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-amber-500/80 text-xs leading-relaxed">
@@ -256,10 +263,10 @@ const ManageProduct = () => {
                             </div>
 
                             <AnimatedButton
-                                text={stage === 'processing' ? "Reactivating Warranty..." : "Confirm Extension"}
-                                disabled={stage !== 'idle' || !productId}
+                                text={stage === 'processing' ? "Reactivating Warranty..." : !isPaid ? "Payment Required for Extension" : "Confirm Extension"}
+                                disabled={stage !== 'idle' || !productId || !isPaid}
                                 icon={Clock}
-                                className="w-full py-5 text-lg bg-slate-900 border-indigo-500/30 text-indigo-400 hover:shadow-[0_0_30px_rgba(99,102,241,0.2)]"
+                                className={`w-full py-5 text-lg ${!isPaid ? 'bg-slate-800 border-red-500/20 text-red-500/50 cursor-not-allowed' : 'bg-slate-900 border-indigo-500/30 text-indigo-400 hover:shadow-[0_0_30px_rgba(99,102,241,0.2)]'}`}
                                 type="submit"
                             />
                         </form>
