@@ -425,11 +425,6 @@ const VerifyOwnership = () => {
                                                                     <span className={`px-2 py-0.5 rounded-md border text-[8px] font-black uppercase tracking-[0.2em] ${color === 'cyan' ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : color === 'emerald' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'}`}>
                                                                         {label}
                                                                     </span>
-                                                                    {isCurrent && (
-                                                                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black tracking-widest flex items-center gap-1">
-                                                                            <CheckCircle2 size={8} /> YOU
-                                                                        </span>
-                                                                    )}
                                                                 </div>
 
                                                                 <h4 className={`font-bold tracking-tight text-white ${isCurrent ? 'text-xl' : 'text-lg'}`}>
