@@ -380,17 +380,16 @@ const VerifyOwnership = () => {
                                                 const isCurrent = index === total - 1;
                                                 
                                                 // Dynamic Labels matching the image
-                                                let label = "TRANSFER — INTERMEDIATE";
+                                                let label = "PREVIOUS OWNER";
                                                 let color = "indigo";
                                                 if (isOrigin) {
-                                                    label = "ORIGIN — BRAND / MANUFACTURER";
+                                                    label = "PREVIOUS OWNER";
                                                     color = "cyan";
-                                                } else if (isCurrent) {
+                                                }
+                                                
+                                                if (isCurrent) {
                                                     label = "CURRENT OWNER";
                                                     color = "emerald";
-                                                } else if (index === 1) {
-                                                    label = "TRANSFER — FIRST BUYER";
-                                                    color = "indigo";
                                                 }
 
                                                 // Color Mappings
@@ -423,11 +422,13 @@ const VerifyOwnership = () => {
                                                         <div className={`transition-all duration-500 ${isCurrent || isOrigin ? 'bg-white/5 p-6 rounded-[1.5rem] border border-white/5 shadow-inner' : 'pl-4'}`}>
                                                             <div className="space-y-3">
                                                                 <div className="flex items-center gap-3">
-                                                                    <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${labelColorMap[color]}`}>
+                                                                    <span className={`px-2 py-0.5 rounded-md border text-[8px] font-black uppercase tracking-[0.2em] ${color === 'cyan' ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : color === 'emerald' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'}`}>
                                                                         {label}
                                                                     </span>
                                                                     {isCurrent && (
-                                                                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black tracking-widest">YOU</span>
+                                                                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black tracking-widest flex items-center gap-1">
+                                                                            <CheckCircle2 size={8} /> YOU
+                                                                        </span>
                                                                     )}
                                                                 </div>
 
