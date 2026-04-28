@@ -239,7 +239,7 @@ const VerifyWarranty = () => {
                                 <Cpu size={40} className="text-cyan-400 animate-pulse drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
                             </div>
                             
-                            <h3 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">Checking Blockchain</h3>
+                            <h3 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">Decoding Hash</h3>
                             
                             <div className="bg-slate-950 border border-cyan-500/30 px-6 py-3 rounded-xl font-mono text-cyan-400 tracking-widest shadow-inner shadow-cyan-900/50 min-w-[300px] text-center">
                                 {hashDecoded}

@@ -33,14 +33,16 @@ async function main() {
             id: "SL-882", 
             name: "Cloud Architect Suite - Enterprise", 
             ownerName: "Deepak", 
-            ownerContact: "deepak@dev.io",
+            ownerContact: "9876543210",
+            ownerEmail: "deepak@dev.io",
             specifications: "Version: 2026.4, License: Perpetual, Nodes: 50, Support: 24/7 Priority"
         },
         { 
             id: "NFT-991", 
             name: "CyberPunk Genesis #001", 
             ownerName: "Alice Crypto", 
-            ownerContact: "alice@web3.com",
+            ownerContact: "1234567890",
+            ownerEmail: "alice@web3.com",
             specifications: "Artist: DigitalNoir, Rarity: Mythic, Mint: #1, Blockchain: WarrantyChain-L2"
         }
     ];
@@ -57,6 +59,7 @@ async function main() {
             now + oneYear,
             p.ownerName,
             p.ownerContact,
+            p.ownerEmail,
             "SER-SN-" + p.id,
             p.specifications
         );

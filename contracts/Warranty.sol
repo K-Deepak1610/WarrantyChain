@@ -10,15 +10,18 @@ contract Warranty {
         address owner;
         string ownerName;
         string ownerContact;
+        string ownerEmail;
         string serialNumber;
         string specifications;
         uint256 createdAt;
+        bool isExtended;
     }
 
     struct OwnershipRecord {
         address owner;
         string ownerName;
         string ownerContact;
+        string ownerEmail;
         uint256 transferDate;
     }
 
@@ -52,6 +55,7 @@ contract Warranty {
     event OwnershipTransferred(string indexed productId, address indexed oldOwner, address indexed newOwner, uint256 timestamp);
     event ServiceRecordAdded(string indexed productId, string description, uint256 timestamp);
     event WarrantyExtended(string indexed productId, uint256 newExpiryDate, uint256 timestamp);
+    event ProductUpdated(string indexed productId, string productName, uint256 timestamp);
 
     function registerProduct(
         string memory _productId,
@@ -60,6 +64,7 @@ contract Warranty {
         uint256 _warrantyEnd,
         string memory _ownerName,
         string memory _ownerContact,
+        string memory _ownerEmail,
         string memory _serialNumber,
         string memory _specifications
     ) public {
@@ -75,9 +80,11 @@ contract Warranty {
             owner: msg.sender,
             ownerName: _ownerName,
             ownerContact: _ownerContact,
+            ownerEmail: _ownerEmail,
             serialNumber: _serialNumber,
             specifications: _specifications,
-            createdAt: block.timestamp
+            createdAt: block.timestamp,
+            isExtended: false
         });
 
         products[_productId] = newProduct;
@@ -90,6 +97,7 @@ contract Warranty {
             owner: msg.sender,
             ownerName: _ownerName,
             ownerContact: _ownerContact,
+            ownerEmail: _ownerEmail,
             transferDate: block.timestamp
         });
         ownershipHistory[_productId].push(initialRecord);
@@ -123,8 +131,10 @@ contract Warranty {
         address owner,
         string memory ownerName,
         string memory ownerContact,
+        string memory ownerEmail,
         string memory serialNumber,
-        string memory specifications
+        string memory specifications,
+        bool isExtended
     ) {
         require(productExists[_productId], "Product not found");
         Product memory p = products[_productId];
@@ -145,8 +155,10 @@ contract Warranty {
             p.owner,
             p.ownerName,
             p.ownerContact,
+            p.ownerEmail,
             p.serialNumber,
-            p.specifications
+            p.specifications,
+            p.isExtended
         );
     }
 
@@ -168,7 +180,8 @@ contract Warranty {
         string memory _productId,
         address _newOwner,
         string memory _newOwnerName,
-        string memory _newOwnerContact
+        string memory _newOwnerContact,
+        string memory _newOwnerEmail
     ) public {
         require(productExists[_productId], "Product not found");
         Product storage p = products[_productId];
@@ -181,17 +194,46 @@ contract Warranty {
         p.owner = _newOwner;
         p.ownerName = _newOwnerName;
         p.ownerContact = _newOwnerContact;
+        p.ownerEmail = _newOwnerEmail;
         
         // Add new ownership record
         OwnershipRecord memory newRecord = OwnershipRecord({
             owner: _newOwner,
             ownerName: _newOwnerName,
             ownerContact: _newOwnerContact,
+            ownerEmail: _newOwnerEmail,
             transferDate: block.timestamp
         });
         ownershipHistory[_productId].push(newRecord);
 
         emit OwnershipTransferred(_productId, oldOwner, _newOwner, block.timestamp);
+    }
+
+    function updateProduct(
+        string memory _productId,
+        string memory _ownerName,
+        string memory _ownerContact,
+        string memory _ownerEmail
+    ) public {
+        require(productExists[_productId], "Product not found");
+        Product storage p = products[_productId];
+        require(msg.sender == p.owner, "Not the owner");
+
+        p.ownerName = _ownerName;
+        p.ownerContact = _ownerContact;
+        p.ownerEmail = _ownerEmail;
+
+        // Update the latest ownership record if it matches current owner
+        if (ownershipHistory[_productId].length > 0) {
+            uint256 lastIdx = ownershipHistory[_productId].length - 1;
+            if (ownershipHistory[_productId][lastIdx].owner == msg.sender) {
+                ownershipHistory[_productId][lastIdx].ownerName = _ownerName;
+                ownershipHistory[_productId][lastIdx].ownerContact = _ownerContact;
+                ownershipHistory[_productId][lastIdx].ownerEmail = _ownerEmail;
+            }
+        }
+
+        emit ProductUpdated(_productId, p.productName, block.timestamp);
     }
 
     function addServiceRecord(
@@ -226,6 +268,7 @@ contract Warranty {
         require(_newExpiryDate > p.warrantyEnd || block.timestamp > p.warrantyEnd, "New expiry must be in the future");
         
         p.warrantyEnd = _newExpiryDate;
+        p.isExtended = true;
 
         // Automatically add a service record for the extension
         ServiceRecord memory extensionRecord = ServiceRecord({

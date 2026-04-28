@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldX, User, Calendar, Clock, ArrowUpRight } from 'lucide-react';
+import { ShieldCheck, ShieldX, User, Calendar, Clock, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { shortenAddress } from '../utils/blockchain';
 
 const ProductCard = ({ product }) => {
@@ -64,7 +64,7 @@ const ProductCard = ({ product }) => {
             </div>
 
             {/* Status Indicator Badge */}
-            <div className="flex justify-center mb-6">
+            <div className="flex flex-col items-center gap-2 mb-6">
                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border flex items-center gap-2 shadow-sm
                     ${isExpired 
                         ? 'bg-red-950/30 border-red-900/50 text-red-400' 
@@ -72,6 +72,17 @@ const ProductCard = ({ product }) => {
                     <div className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-red-500' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse'}`} />
                     {isExpired ? 'Warranty Expired' : 'Warranty Active'}
                 </div>
+                
+                {product.isExtended && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5"
+                    >
+                        <RefreshCw size={10} className="animate-spin-slow" />
+                        Extended Warranty
+                    </motion.div>
+                )}
             </div>
             
             {/* Specifications Section */}

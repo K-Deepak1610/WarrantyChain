@@ -8,8 +8,6 @@ export const CONFIG = {
     RPC_URL: "http://127.0.0.1:7545",
 
     // Static Verification Page URL (GitHub Pages or similar)
-    // Example: "https://yourname.github.io/WarrantyChain/verify.html"
-    // Leave empty to default to local /verify.html
     PUBLIC_VERIFY_PAGE_URL: "https://k-deepak1610.github.io/warranty-verify-page/"
 };
 

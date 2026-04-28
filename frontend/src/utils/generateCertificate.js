@@ -16,6 +16,7 @@ export const generateCertificate = async (productData) => {
         ownerName,
         owner,
         ownerContact,
+        ownerEmail,
         serialNumber,
         specifications,
         history,
@@ -151,6 +152,7 @@ export const generateCertificate = async (productData) => {
     addDataRow("Owner Name", ownerName);
     addDataRow("Owner Address", owner, true);
     addDataRow("Owner Contact", ownerContact);
+    addDataRow("Owner Email", ownerEmail);
 
     yPos += 5;
 
@@ -169,7 +171,7 @@ export const generateCertificate = async (productData) => {
         yPos += 6;
         addDataRow("Name", firstOwner.ownerName);
         addDataRow("Wallet Address", firstOwner.owner, true);
-        addDataRow("Ownership Start", new Date(firstOwner.transferDate * 1000).toLocaleDateString());
+        addDataRow("Ownership Start", new Date((warrantyStart && Number(warrantyStart) > 0 ? Number(warrantyStart) : firstOwner.transferDate) * 1000).toLocaleDateString());
         
         yPos += 4;
 

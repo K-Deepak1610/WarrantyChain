@@ -168,6 +168,10 @@ const PublicVerify = () => {
                                                 <p className="text-white/50 text-xs">Owner Contact</p>
                                                 <p className="text-blue-400 font-medium">{result.ownerContact || "Not Provided"}</p>
                                             </div>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <p className="text-white/50 text-xs">Owner Email</p>
+                                                <p className="text-blue-400 font-medium">{result.ownerEmail || "Not Provided"}</p>
+                                            </div>
                                             <div className="pt-4">
                                                 <HashDisplay 
                                                     label="Owner Wallet Address" 

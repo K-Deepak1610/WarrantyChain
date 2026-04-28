@@ -227,14 +227,15 @@ const ManageProduct = () => {
                                 <p className="text-slate-400 text-sm mb-8">Select the new expiration date for this digital asset.</p>
                                 
                                 <div className="space-y-2 text-left">
-                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] px-4">New Expiry Date</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">New Expiry Date</label>
                                     <div className="relative">
                                         <input
                                             type="date"
                                             required
                                             value={newExpiry}
                                             onChange={(e) => setNewExpiry(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-3xl p-5 text-white focus:outline-none focus:border-indigo-400 transition-all text-center text-xl font-bold"
+                                            onClick={(e) => e.target.showPicker?.()}
+                                            className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
                                         />
                                     </div>
                                 </div>

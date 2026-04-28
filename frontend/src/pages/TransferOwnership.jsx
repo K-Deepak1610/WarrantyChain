@@ -21,7 +21,8 @@ const TransferOwnership = () => {
         productId: "",
         newOwner: "",
         newOwnerName: "",
-        newOwnerContact: ""
+        newOwnerContact: "",
+        newOwnerEmail: ""
     });
     const [productDetails, setProductDetails] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
@@ -65,7 +66,7 @@ const TransferOwnership = () => {
         if (isSearching) return { text: "Verifying Asset...", icon: Loader2, action: null, disabled: true, spin: true };
         if (!productDetails) return { text: "Invalid Product ID", icon: AlertCircle, action: null, disabled: true };
         if (!isMatch) return { text: "Switch to Owner Wallet", icon: RefreshCw, action: selectAccount, color: "amber" };
-        if (!formData.newOwner || !formData.newOwnerName || !formData.newOwnerContact) return { text: "Enter Recipient Details", icon: User, action: null, disabled: true };
+        if (!formData.newOwner || !formData.newOwnerName || !formData.newOwnerContact || !formData.newOwnerEmail) return { text: "Enter Recipient Details", icon: User, action: null, disabled: true };
         
         return { 
             text: stage === 'processing' ? "Transferring..." : "Confirm & Transfer", 
@@ -78,7 +79,7 @@ const TransferOwnership = () => {
     const handleTransfer = async () => {
         const cleanId = formData.productId.trim();
         await execute(
-            transferOwnership(contract, cleanId, formData.newOwner, formData.newOwnerName, formData.newOwnerContact),
+            transferOwnership(contract, cleanId, formData.newOwner, formData.newOwnerName, formData.newOwnerContact, formData.newOwnerEmail),
             {
                 action: "Transferred",
                 productId: cleanId,
@@ -95,7 +96,7 @@ const TransferOwnership = () => {
     const handleReset = () => {
         reset();
         if (stage === 'success') {
-            setFormData({ productId: "", newOwner: "", newOwnerName: "", newOwnerContact: "" });
+            setFormData({ productId: "", newOwner: "", newOwnerName: "", newOwnerContact: "", newOwnerEmail: "" });
             setProductDetails(null);
         }
     };
@@ -212,10 +213,21 @@ const TransferOwnership = () => {
                                     name="newOwnerContact"
                                     value={formData.newOwnerContact}
                                     onChange={(e) => setFormData({...formData, newOwnerContact: e.target.value})}
-                                    placeholder="Phone/Email"
+                                    placeholder="Phone"
                                     className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-5 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-mono shadow-inner shadow-black"
                                 />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Receiver Email</label>
+                            <input
+                                name="newOwnerEmail"
+                                type="email"
+                                value={formData.newOwnerEmail}
+                                onChange={(e) => setFormData({...formData, newOwnerEmail: e.target.value})}
+                                placeholder="Email address"
+                                className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-5 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-mono shadow-inner shadow-black"
+                            />
                         </div>
                     </div>
 

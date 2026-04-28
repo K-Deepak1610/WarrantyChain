@@ -19,6 +19,7 @@ export const registerProduct = async (contract, productDetails) => {
             BigInt(productDetails.warrantyEnd),
             productDetails.ownerName,
             productDetails.ownerContact,
+            productDetails.ownerEmail,
             productDetails.serialNumber,
             productDetails.specifications
         );
@@ -43,8 +44,10 @@ export const verifyWarranty = async (contract, productId) => {
             owner: result[5],
             ownerName: result[6],
             ownerContact: result[7],
-            serialNumber: result[8],
-            specifications: result[9]
+            ownerEmail: result[8],
+            serialNumber: result[9],
+            specifications: result[10],
+            isExtended: result[11]
         };
     } catch (error) {
         console.error("Error verifying warranty:", error);
@@ -61,7 +64,8 @@ export const verifyOwnership = async (contract, productId) => {
             owner: record[0],
             ownerName: record[1],
             ownerContact: record[2],
-            transferDate: Number(record[3])
+            ownerEmail: record[3],
+            transferDate: Number(record[4])
         }));
 
         return {
@@ -75,14 +79,15 @@ export const verifyOwnership = async (contract, productId) => {
     }
 };
 
-export const transferOwnership = async (contract, productId, newOwner, newOwnerName, newOwnerContact) => {
+export const transferOwnership = async (contract, productId, newOwner, newOwnerName, newOwnerContact, newOwnerEmail) => {
     try {
         if (!contract) throw new Error("Contract not initialized");
         const tx = await contract.transferOwnership(
             productId,
             newOwner,
             newOwnerName,
-            newOwnerContact
+            newOwnerContact,
+            newOwnerEmail
         );
         return tx;
     } catch (error) {
@@ -105,7 +110,9 @@ export const getAllProducts = async (contract) => {
             serialNumber: p.serialNumber,
             specifications: p.specifications,
             warrantyStart: Number(p.warrantyStart),
-            warrantyEnd: Number(p.warrantyEnd)
+            warrantyEnd: Number(p.warrantyEnd),
+            ownerEmail: p.ownerEmail,
+            isExtended: p.isExtended
         }));
     } catch (error) {
         console.error("Error fetching all products:", error);
@@ -149,6 +156,22 @@ export const getServiceHistory = async (contract, productId) => {
         }));
     } catch (error) {
         console.error("Error fetching service history:", error);
+        throw error;
+    }
+};
+
+export const updateProduct = async (contract, productDetails) => {
+    try {
+        if (!contract) throw new Error("Contract not initialized");
+        const tx = await contract.updateProduct(
+            productDetails.id,
+            productDetails.ownerName,
+            productDetails.ownerContact,
+            productDetails.ownerEmail
+        );
+        return tx;
+    } catch (error) {
+        console.error("Error updating product:", error);
         throw error;
     }
 };
