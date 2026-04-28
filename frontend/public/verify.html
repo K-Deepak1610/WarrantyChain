@@ -131,14 +131,13 @@
         async function verify() {
             const params = new URLSearchParams(window.location.search);
             
-            // 1. Get data from URL parameters (passed by QR generator)
-            // This ensures it works on mobile even if Ganache is unreachable
+            // 1. Get data from URL parameters with flexible keys
             const urlData = {
-                name: params.get('name') || "Unknown Product",
-                id: params.get('productId') || params.get('id') || "---",
-                owner: params.get('owner') || "N/A",
-                status: params.get('status') || "Inactive",
-                expiry: params.get('valid') || "N/A"
+                name: params.get('name') || params.get('productName') || params.get('product') || "Product Found",
+                id: params.get('id') || params.get('productId') || params.get('product_id') || "---",
+                owner: params.get('owner') || params.get('ownerName') || "Registered Owner",
+                status: params.get('status') || params.get('isValid') || "Active",
+                expiry: params.get('valid') || params.get('expiry') || params.get('warrantyEnd') || "Verified Date"
             };
 
             const loader = document.getElementById('loader');
