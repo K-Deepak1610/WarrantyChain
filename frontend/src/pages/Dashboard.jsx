@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import DashboardCard from '../components/DashboardCard';
 import BackToHomeButton from '../components/BackToHomeButton';
-import { PlusCircle, CheckCircle, Shield, RefreshCw, Wifi, Database, Copy, Check, TrendingUp, Package, Settings } from 'lucide-react';
+import { PlusCircle, CheckCircle, Shield, RefreshCw, Wifi, Database, Copy, Check, TrendingUp, Package, Settings, Search } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { shortenAddress, getAllProducts } from '../utils/blockchain';
 import ProductCard from '../components/ProductCard';
@@ -33,6 +33,7 @@ const Dashboard = () => {
     usePageTitle('Dashboard');
     const { isConnected, account, contract } = useWallet();
     const [products, setProducts] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
@@ -63,6 +64,16 @@ const Dashboard = () => {
             a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' })
         );
     }, [products]);
+
+    const filteredProducts = useMemo(() => {
+        if (!searchTerm) return sortedProducts;
+        const term = searchTerm.toLowerCase();
+        return sortedProducts.filter(p => 
+            p.name.toLowerCase().includes(term) || 
+            p.id.toLowerCase().includes(term) || 
+            p.serialNumber.toLowerCase().includes(term)
+        );
+    }, [sortedProducts, searchTerm]);
 
     const activeProducts = useMemo(() => {
         const now = Date.now() / 1000;
@@ -155,15 +166,30 @@ const Dashboard = () => {
 
                 {/* ─── Registered Products Gallery ─────────── */}
                 <div className="pt-4">
-                    <h2 className="text-lg font-bold text-slate-300 mb-4 flex items-center gap-2">
-                        <span className="w-1 h-5 bg-gradient-to-b from-indigo-400 to-purple-400 rounded-full inline-block" />
-                        Registered Assets
-                        {products.length > 0 && (
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold">
-                                {products.length}
-                            </span>
-                        )}
-                    </h2>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <h2 className="text-lg font-bold text-slate-300 flex items-center gap-2">
+                            <span className="w-1 h-5 bg-gradient-to-b from-indigo-400 to-purple-400 rounded-full inline-block" />
+                            Registered Assets
+                            {products.length > 0 && (
+                                <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold">
+                                    {products.length}
+                                </span>
+                            )}
+                        </h2>
+
+                        <div className="relative group max-w-sm w-full">
+                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-indigo-400 transition-colors">
+                                <Search size={18} />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Search by Name, ID, or Serial..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all backdrop-blur-xl shadow-inner"
+                            />
+                        </div>
+                    </div>
 
                     {products.length === 0 ? (
                         <div className="text-center p-16 glass-card rounded-2xl border-white/5 flex flex-col items-center">
@@ -180,9 +206,16 @@ const Dashboard = () => {
                             }}
                             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 w-full"
                         >
-                            {sortedProducts.map(p => (
-                                <ProductCard key={p.id} product={p} />
-                            ))}
+                            {filteredProducts.length === 0 ? (
+                                <div className="col-span-full py-20 text-center glass-card rounded-2xl border-white/5">
+                                    <Search size={32} className="mx-auto text-slate-700 mb-4" />
+                                    <p className="text-slate-500 text-sm italic">No matching assets found for "{searchTerm}"</p>
+                                </div>
+                            ) : (
+                                filteredProducts.map(p => (
+                                    <ProductCard key={p.id} product={p} />
+                                ))
+                            )}
                         </motion.div>
                     )}
                 </div>

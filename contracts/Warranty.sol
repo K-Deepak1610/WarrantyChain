@@ -241,7 +241,8 @@ contract Warranty {
         string memory _description,
         string memory _technician,
         string memory _location,
-        bool _isPaid
+        bool _isPaid,
+        uint256 _serviceDate
     ) public {
         require(productExists[_productId], "Product not found");
         // For simplicity, we allow anyone to add a record, 
@@ -250,13 +251,13 @@ contract Warranty {
         ServiceRecord memory newService = ServiceRecord({
             description: _description,
             technicianName: _technician,
-            serviceDate: block.timestamp,
+            serviceDate: _serviceDate,
             location: _location,
             isPaid: _isPaid
         });
         
         serviceHistory[_productId].push(newService);
-        emit ServiceRecordAdded(_productId, _description, block.timestamp);
+        emit ServiceRecordAdded(_productId, _description, _serviceDate);
     }
 
     function extendWarranty(string memory _productId, uint256 _newExpiryDate) public {

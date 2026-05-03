@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassCard from '../components/GlassCard';
 import AnimatedButton from '../components/AnimatedButton';
@@ -66,9 +66,20 @@ const Register = () => {
     const [lookupId, setLookupId] = useState("");
     const [isFetching, setIsFetching] = useState(false);
     const [fetchError, setFetchError] = useState("");
+    const [emailError, setEmailError] = useState("");
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+        
+        if (name === "ownerEmail") {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (value && !emailRegex.test(value)) {
+                setEmailError("Please enter a valid email address");
+            } else {
+                setEmailError("");
+            }
+        }
     };
 
     const handleSpecChange = (index, field, value) => {
@@ -117,6 +128,13 @@ const Register = () => {
         try {
             const data = await verifyWarranty(contract, lookupId.trim());
             
+            // Ownership check for edit mode
+            if (mode === 'edit' && data.owner.toLowerCase() !== account.toLowerCase()) {
+                setFetchError("Access Denied: Only the product owner can modify these details.");
+                setIsFetching(false);
+                return;
+            }
+
             // Format dates for input type="date"
             const formatDate = (timestamp) => {
                 const date = new Date(timestamp * 1000);
@@ -246,6 +264,16 @@ const Register = () => {
             console.error("Flow failed:", error);
         }
     };
+
+    const isFormValid = useMemo(() => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const isEmailValid = emailRegex.test(formData.ownerEmail);
+        const isContactValid = formData.ownerContact.length === 10;
+        const requiredFields = [formData.id, formData.name, formData.warrantyStart, formData.warrantyEnd, formData.ownerName, formData.ownerContact, formData.ownerEmail, formData.serialNumber];
+        const allFieldsFilled = requiredFields.every(field => field && field.trim().length > 0);
+        
+        return isEmailValid && isContactValid && allFieldsFilled && !emailError;
+    }, [formData, emailError]);
 
     const handleReset = () => {
         reset();
@@ -413,8 +441,9 @@ const Register = () => {
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Name</label>
                                 <input
                                     name="ownerName" required
+                                    disabled={mode === 'edit'}
                                     value={formData.ownerName}
-                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
+                                    className={`w-full bg-slate-900/80 border ${mode === 'edit' ? 'border-white/5 opacity-50 cursor-not-allowed' : 'border-white/10'} rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50`}
                                     placeholder="Enter the owner name"
                                     onChange={handleChange}
                                 />
@@ -462,14 +491,38 @@ const Register = () => {
                             </div>
                             <div className="pt-5">
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Owner Email</label>
-                                <input
-                                    name="ownerEmail" required
-                                    type="email"
-                                    value={formData.ownerEmail}
-                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50"
-                                    placeholder="Enter the owner email"
-                                    onChange={handleChange}
-                                />
+                                <div className="relative group">
+                                    <input
+                                        name="ownerEmail" required
+                                        type="email"
+                                        value={formData.ownerEmail}
+                                        className={`w-full bg-slate-900/80 border ${emailError ? 'border-amber-500/50' : 'border-white/10'} rounded-xl p-4 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all font-mono shadow-inner shadow-black/50`}
+                                        placeholder="Enter the owner email"
+                                        onChange={handleChange}
+                                    />
+                                    <AnimatePresence>
+                                        {emailError && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, x: 10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0 }}
+                                                className="absolute -bottom-6 left-1 flex items-center gap-1 text-[10px] font-bold text-amber-500 uppercase"
+                                            >
+                                                <Info size={10} /> {emailError}
+                                            </motion.div>
+                                        )}
+                                        {!emailError && formData.ownerEmail && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, x: 10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0 }}
+                                                className="absolute -bottom-6 left-1 flex items-center gap-1 text-[10px] font-bold text-emerald-400 uppercase"
+                                            >
+                                                <CheckCircle2 size={10} /> Valid Email
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
 
                             <div className="pt-2">
@@ -553,9 +606,9 @@ const Register = () => {
                                             stage === 'waiting' ? "Awaiting Wallet..." : 
                                             mode === 'register' ? "Register Warranty" : "Update Registry"
                                         }
-                                        disabled={stage !== 'idle'}
+                                        disabled={stage !== 'idle' || !isFormValid}
                                         icon={mode === 'register' ? Plus : CheckCircle2}
-                                        className={`w-full py-4 text-lg ${stage !== 'idle' ? 'bg-slate-700 cursor-not-allowed' : mode === 'register' ? 'bg-slate-900 border-indigo-500/50 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all' : 'bg-slate-900 border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all'}`}
+                                        className={`w-full py-4 text-lg ${stage !== 'idle' || !isFormValid ? 'bg-slate-700 cursor-not-allowed opacity-50' : mode === 'register' ? 'bg-slate-900 border-indigo-500/50 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all' : 'bg-slate-900 border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all'}`}
                                         type="submit"
                                     />
                                 )}

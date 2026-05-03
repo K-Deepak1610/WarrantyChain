@@ -9,14 +9,14 @@ import { verifyWarranty } from '../utils/blockchain';
  * @param {string} productId - The ID to look up
  */
 export const useProductLookup = (contract, productId) => {
-    const [productName, setProductName] = useState("");
+    const [productData, setProductData] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState("");
 
     useEffect(() => {
         // Clear state if input is too short or empty
         if (!productId || productId.trim().length < 2) {
-            setProductName("");
+            setProductData(null);
             setIsSearching(false);
             setError("");
             return;
@@ -33,15 +33,15 @@ export const useProductLookup = (contract, productId) => {
                 const data = await verifyWarranty(contract, cleanId);
                 
                 if (data && data.productName && data.productName !== "") {
-                    setProductName(data.productName);
+                    setProductData(data);
                     setError("");
                 } else {
-                    setProductName("");
+                    setProductData(null);
                     setError("Product ID not found");
                 }
             } catch (err) {
                 // If the contract reverts, it usually means ID doesn't exist
-                setProductName("");
+                setProductData(null);
                 setError("Product ID not found");
             } finally {
                 setIsSearching(false);
@@ -51,5 +51,5 @@ export const useProductLookup = (contract, productId) => {
         return () => clearTimeout(timer);
     }, [productId, contract]);
 
-    return { productName, isSearching, error };
+    return { productData, isSearching, error };
 };

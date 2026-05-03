@@ -120,10 +120,10 @@ export const getAllProducts = async (contract) => {
     }
 };
 
-export const addServiceRecord = async (contract, productId, description, technician, location, isPaid) => {
+export const addServiceRecord = async (contract, productId, description, technician, location, isPaid, serviceDate) => {
     try {
         if (!contract) throw new Error("Contract not initialized");
-        const tx = await contract.addServiceRecord(productId, description, technician, location, isPaid);
+        const tx = await contract.addServiceRecord(productId, description, technician, location, isPaid, BigInt(serviceDate));
         return tx;
     } catch (error) {
         console.error("Error adding service record:", error);
@@ -139,6 +139,25 @@ export const extendWarranty = async (contract, productId, newExpiryDate) => {
     } catch (error) {
         console.error("Error extending warranty:", error);
         throw error;
+    }
+};
+
+export const getWarrantyHistory = async (contract, productId) => {
+    try {
+        if (!contract) throw new Error("Contract not initialized");
+        
+        // Filter events for this product ID
+        const filter = contract.filters.WarrantyExtended(productId);
+        const events = await contract.queryFilter(filter);
+        
+        return events.map(event => ({
+            newExpiry: Number(event.args[1]),
+            timestamp: Number(event.args[2]),
+            txnHash: event.transactionHash
+        }));
+    } catch (error) {
+        console.error("Error fetching warranty history:", error);
+        return [];
     }
 };
 

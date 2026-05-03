@@ -28,7 +28,8 @@ const VerifyWarranty = () => {
     const [showQRModal, setShowQRModal] = useState(false);
     
     // Instant Lookup Hook
-    const { productName: quickName, isSearching, error: lookupError } = useProductLookup(contract, productId);
+    const { productData, isSearching, error: lookupError } = useProductLookup(contract, productId);
+    const quickName = productData?.productName;
     
     // State Machine: 'IDLE' | 'SCANNING' | 'VALIDATING' | 'RESULT'
     const [step, setStep] = useState('IDLE');
@@ -49,6 +50,12 @@ const VerifyWarranty = () => {
             console.warn("Read-only provider failed", e);
         }
         return null;
+    };
+
+    const formatDate = (timestamp) => {
+        if (!timestamp) return "N/A";
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
     // Hash Decrypt Animation
@@ -314,7 +321,7 @@ const VerifyWarranty = () => {
                                                 <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20"><Calendar className="text-emerald-400" size={18} /></div>
                                                 <div>
                                                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Warranty Register</p>
-                                                    <p className="text-slate-100 text-sm font-mono">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</p>
+                                                    <p className="text-slate-100 text-sm font-mono">{formatDate(result.warrantyStart)}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
@@ -326,7 +333,7 @@ const VerifyWarranty = () => {
                                                             <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-[8px] font-bold animate-pulse">EXTENDED</span>
                                                         )}
                                                     </p>
-                                                    <p className="text-slate-100 text-sm font-mono">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</p>
+                                                    <p className="text-slate-100 text-sm font-mono">{formatDate(result.warrantyEnd)}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -403,14 +410,16 @@ const VerifyWarranty = () => {
                                                                     </div>
                                                                     <h4 className="text-white font-bold text-sm">{service.description}</h4>
                                                                 </div>
-                                                                <span className="text-[10px] text-slate-500 font-mono">{new Date(service.serviceDate * 1000).toLocaleDateString()}</span>
-                                                            </div>
-                                                            <div className="flex gap-4 text-[10px] text-slate-400">
-                                                                <div className="flex items-center gap-1">
-                                                                    <User size={10} /> {service.technicianName}
+                                                                <div className="flex items-center gap-1.5 text-[11px] text-cyan-400 font-black bg-cyan-500/5 px-2 py-0.5 rounded border border-cyan-500/10">
+                                                                    <Calendar size={10} /> {formatDate(service.serviceDate)}
                                                                 </div>
-                                                                <div className="flex items-center gap-1">
-                                                                    <MapPin size={10} /> {service.location}
+                                                            </div>
+                                                            <div className="flex gap-6 text-[11px] text-slate-300 font-medium mt-1">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <User size={12} className="text-indigo-400" /> {service.technicianName || "Official Technician"}
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <MapPin size={12} className="text-emerald-400" /> {service.location || "Authorized Service Center"}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -446,7 +455,7 @@ const VerifyWarranty = () => {
                                     <QRModal 
                                         isOpen={showQRModal}
                                         onClose={() => setShowQRModal(false)}
-                                        value={`${getVerifyPageURL()}?name=${encodeURIComponent(result.productName)}&id=${encodeURIComponent(productId)}&owner=${encodeURIComponent(result.ownerName)}&status=${result.isValid ? 'Active' : 'Expired'}&valid=${encodeURIComponent(new Date(result.warrantyEnd * 1000).toLocaleDateString())}`}
+                                        value={`${getVerifyPageURL()}?name=${encodeURIComponent(result.productName)}&id=${encodeURIComponent(productId)}&owner=${encodeURIComponent(result.ownerName)}&status=${result.isValid ? 'Active' : 'Expired'}&valid=${encodeURIComponent(formatDate(result.warrantyEnd))}`}
                                         metadata={{ productName: result.productName, productId: productId }}
                                     />
 

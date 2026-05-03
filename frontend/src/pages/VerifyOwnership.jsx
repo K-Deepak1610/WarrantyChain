@@ -25,7 +25,8 @@ const VerifyOwnership = () => {
     const [error, setError] = useState("");
     const [showQRModal, setShowQRModal] = useState(false);
     
-    const { productName: quickName, isSearching, error: lookupError } = useProductLookup(contract, productId);
+    const { productData, isSearching, error: lookupError } = useProductLookup(contract, productId);
+    const quickName = productData?.productName;
     const [step, setStep] = useState('IDLE');
     const [hashDecoded, setHashDecoded] = useState("");
 
@@ -42,6 +43,12 @@ const VerifyOwnership = () => {
             console.warn("Read-only provider failed", e);
         }
         return null;
+    };
+
+    const formatDate = (timestamp) => {
+        if (!timestamp) return "N/A";
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
     useEffect(() => {
@@ -436,7 +443,7 @@ const VerifyOwnership = () => {
                                                                         {record.owner}
                                                                     </p>
                                                                     <p className="text-[10px] text-slate-400 font-medium">
-                                                                        {new Date((isOrigin && Number(result.warrantyStart) > 0 ? Number(result.warrantyStart) : record.transferDate) * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} — {isOrigin ? 'Product Registered' : 'Ownership transferred'}
+                                                                        {formatDate(isOrigin && Number(result.warrantyStart) > 0 ? Number(result.warrantyStart) : record.transferDate)} — {isOrigin ? 'Product Registered' : 'Ownership transferred'}
                                                                     </p>
                                                                 </div>
 

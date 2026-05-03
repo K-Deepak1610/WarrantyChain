@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import GlassCard from '../components/GlassCard';
 import AnimatedButton from '../components/AnimatedButton';
 import HashDisplay from '../components/HashDisplay';
-import { verifyWarranty, verifyOwnership, shortenAddress } from '../utils/blockchain';
+import { verifyWarranty, verifyOwnership, getServiceHistory, shortenAddress } from '../utils/blockchain';
 import { generateCertificate } from '../utils/generateCertificate';
 import { useWallet } from '../context/WalletContext';
 import ContractAddress from '../contracts/contract-address.json';
@@ -20,7 +20,9 @@ import {
     History,
     Download,
     ChevronLeft,
-    Loader2
+    Loader2,
+    Wrench,
+    MapPin
 } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { getBaseURL, CONFIG } from '../config';
@@ -59,6 +61,12 @@ const PublicVerify = () => {
         init();
     }, [contract, productId]);
 
+    const formatDate = (timestamp) => {
+        if (!timestamp) return "N/A";
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
     const fetchData = async () => {
         setLoading(true);
         setError("");
@@ -72,14 +80,16 @@ const PublicVerify = () => {
                 throw new Error("Unable to connect to blockchain node.");
             }
 
-            const [warrantyData, ownershipData] = await Promise.all([
+            const [warrantyData, ownershipData, serviceHistory] = await Promise.all([
                 verifyWarranty(activeContract, productId),
-                verifyOwnership(activeContract, productId).catch(() => ({}))
+                verifyOwnership(activeContract, productId).catch(() => ({})),
+                getServiceHistory(activeContract, productId).catch(() => [])
             ]);
 
             setResult({
                 ...warrantyData,
                 ...ownershipData,
+                services: serviceHistory,
                 productId
             });
         } catch (err) {
@@ -199,11 +209,11 @@ const PublicVerify = () => {
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Warranty Register</span>
-                                                    <span className="text-white text-sm font-medium">{new Date(result.warrantyStart * 1000).toLocaleDateString()}</span>
+                                                    <span className="text-white text-sm font-medium">{formatDate(result.warrantyStart)}</span>
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Warranty Expiry</span>
-                                                    <span className="text-white text-sm font-medium">{new Date(result.warrantyEnd * 1000).toLocaleDateString()}</span>
+                                                    <span className="text-white text-sm font-medium">{formatDate(result.warrantyEnd)}</span>
                                                 </div>
                                             </div>
 
@@ -232,7 +242,44 @@ const PublicVerify = () => {
                                 </div>
                             </div>
 
-                            {/* Timeline section if history exists */}
+                                                         {/* Service History Timeline Section */}
+                             {result.services && result.services.length > 0 && (
+                                <section className="mt-12 pt-12 border-t border-white/5">
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-8 flex items-center gap-2">
+                                        <Wrench size={14} className="text-blue-500" /> Maintenance History
+                                    </h3>
+                                    <div className="space-y-6 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-px before:bg-white/5">
+                                        {result.services.map((service, index) => (
+                                            <div key={index} className="relative pl-10 group">
+                                                <div className="absolute left-2.5 top-1.5 w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                                                <div className="bg-white/5 border border-white/5 rounded-2xl p-5 hover:bg-white/10 transition-all">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5 text-emerald-400 text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 w-fit mb-2">
+                                                                Verified Service
+                                                            </div>
+                                                            <h4 className="text-white font-bold text-base">{service.description}</h4>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-blue-400 font-black bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">
+                                                            <Calendar size={10} /> {formatDate(service.serviceDate)}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-6 text-[11px] text-slate-300 font-medium">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <User size={12} className="text-blue-400" /> {service.technicianName || "Official Technician"}
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <MapPin size={12} className="text-blue-400" /> {service.location || "Authorized Service Center"}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                             )}
+
+                             {/* Timeline section if history exists */}
                             {result.history && result.history.length > 0 && (
                                 <section className="mt-12 pt-12 border-t border-white/5">
                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-8 flex items-center gap-2">
@@ -251,7 +298,7 @@ const PublicVerify = () => {
                                                 <div className="mb-3">
                                                     <HashDisplay value={record.owner} isBackup={false} />
                                                 </div>
-                                                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">{new Date(record.transferDate * 1000).toLocaleDateString()}</p>
+                                                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">{formatDate(record.transferDate)}</p>
                                                 {i === result.history.length - 1 && (
                                                     <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[8px] font-bold uppercase">Current</div>
                                                 )}
