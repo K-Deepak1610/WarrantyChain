@@ -1,0 +1,16 @@
+﻿            }
+
+
+
+            setShowBurst(true);
+
+            setTimeout(() => setShowBurst(false), 2000);
+
+            
+
+    const isFormValid = useMemo(() => {
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        const isEmailValid = emailRegex.test(formData.ownerEmail);
+
